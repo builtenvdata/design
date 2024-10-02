@@ -1,0 +1,6 @@
+GEM taxonomy
+LFM: Moment Frame
+CR: reinforced concrete
+RES: Residential
+PLFR: Rectangular, solid building plan
+IRRE: Regular structure
