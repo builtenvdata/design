@@ -2240,5 +2240,7 @@ class BuildingBase(ABC):
         # Adjust member design attributes for given quality
         if self.ok:
             self.quality.set_adjusted_properties(self.beams, self.columns)
+            # Set average column axial forces to be used.
+            self._set_column_predesign_forces()
         else:
             Warning('No design soltuion is found.')

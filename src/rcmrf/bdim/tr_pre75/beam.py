@@ -289,9 +289,16 @@ class Beam(BeamBase):
         Asl_top = self.rhol_top * self.Ag
         Asl_bot = self.rhol_bot * self.Ag
         # Calculate the shear reinforcement
+        sbh = 0.5  # stirrup spacing
+        dbh = 0.006  # stirrup diameter
+        nlegs = 2  # number of legs
+        Ash_sbh_min = nlegs * (np.pi * 0.25 * dbh**2) / sbh
+        # TODO: Check this expression because it can result in negative reinf.
+        # TODO: Added minimum reinforcement to avoid negative reinf. situation.
         Vrd = tau_c * self.b * d
         mask = z * fsyd * np.maximum(Asl_top, Asl_bot) < Vrd * d
         Ash_sbh = shear / (fsyd * d)
         Ash_sbh[~mask] = (shear[~mask] - Vrd) / (fsyd * d)
+        Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
         # Save the required transverse reinforcement area to spacing
         self.Ash_sbh_req = Ash_sbh
