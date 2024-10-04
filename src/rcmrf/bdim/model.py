@@ -24,7 +24,7 @@ def get_bdim(taxonomy: TaxonomyData) -> BuildingBase:
     BuildingBase
         A BDIM instance of the corresponding design class.
     """
-    # Mapping from building type string to class
+    # Mapping from design_class attribute of taxonomy to each bdim class
     design_classes = {
         "eu_cdn": EuCDN,
         "eu_cdl": EuCDL,
@@ -36,10 +36,10 @@ def get_bdim(taxonomy: TaxonomyData) -> BuildingBase:
         "tr_0718": Tr0718,
         "tr_post18": TrPost18
     }
-    # Get bdim
+    # Get appropriate bdim class
     bdim = design_classes.get(taxonomy.design_class)
-    # Check if the building_type is valid
+    # Check if the design_class is valid
     if bdim is None:
-        raise ValueError(f"Invalid building type: {taxonomy.design_class}")
+        raise ValueError(f"Invalid design class: {taxonomy.design_class}")
     # Instantiate and return the appropriate class
     return bdim(taxonomy)
