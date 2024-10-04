@@ -22,7 +22,7 @@ design_classes = [
 ]
 
 # Make directory for all outputs
-outdir_main = "Outputs"
+outdir_main = Path("Outputs")
 make_dir(outdir_main)
 
 # Loop through all design classes
@@ -37,7 +37,7 @@ for design_class in design_classes:
         beta=0.1
     )
     # Make directory specific to the design class
-    outdir_class = my_path / f"{design_class}"
+    outdir_class = outdir_main / f"{design_class}"
     make_dir(outdir_class)
     # Save bcim information
     bcim.to_csv(outdir_class / "bcim_data.csv")

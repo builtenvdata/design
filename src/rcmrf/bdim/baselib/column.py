@@ -463,26 +463,45 @@ class ColumnBase(ABC):
         return self.steel.fsyd * MPa
 
     @property
-    def Ec(self) -> float:
+    def Ecm(self) -> float:
         """
         Returns
         -------
         float
-            Elastic young's modulus of concrete (in base units).
+            Mean value of elastic young's modulus of concrete (in base units).
         """
-
-        return self.concrete.E
+        return self.concrete.Ecm
 
     @property
-    def Gc(self) -> float:
+    def Ecd(self) -> float:
         """
         Returns
         -------
         float
-            Elastic shear modulus of concrete (in base units).
+            Design value of elastic young's modulus of concrete
+            (in base units).
         """
+        return self.concrete.Ecd
 
-        return self.concrete.G
+    @property
+    def Gcm(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Mean value of elastic shear modulus of concrete (in base units).
+        """
+        return self.concrete.Gcm
+
+    @property
+    def Gcd(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Design value of elastic shear modulus of concrete (in base units).
+        """
+        return self.concrete.Gcd
 
     @property
     def Es(self) -> float:
@@ -492,8 +511,7 @@ class ColumnBase(ABC):
         float
             Elastic young's modulus of steel (in base units).
         """
-
-        return self.steel.E
+        return self.steel.Es
 
     @property
     def Ag(self) -> float:

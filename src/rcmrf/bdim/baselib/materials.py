@@ -26,7 +26,7 @@ class SteelBase(BaseModel, ABC):
         Design value of steel yield strength (in MPa).
     fsym : float
         Mean value of steel yield strength (in MPa).
-    E : float
+    Es : float
         Steel elastic youngs' modulus (in base units, kPa),
         by default 200 * GPa.
     PARTIAL_FACTOR : float
@@ -40,7 +40,7 @@ class SteelBase(BaseModel, ABC):
     """"Design value of steel yield strength (in MPa)."""
     fsym: float | None = None
     """Mean value of steel yield strength (in MPa)."""
-    E: float | None = None
+    Es: float | None = None
     """Steel elastic youngs' modulus (in base units, kPa)."""
     PARTIAL_FACTOR: float = 1.0
     """Partial factor for steel, by default 1.0."""
@@ -75,8 +75,8 @@ class SteelBase(BaseModel, ABC):
         """
         If not provided, sets Young's modulus (E).
         """
-        if instance.E is None:
-            instance.E = 200 * GPa
+        if instance.Es is None:
+            instance.Es = 200 * GPa
         return instance
 
 
@@ -94,10 +94,14 @@ class ConcreteBase(BaseModel, ABC):
         Design value of concrete compressive strength (in MPa).
     fcm : float
         Mean value of the compressive strength of concrete cylinders (in MPa).
-    E : float
-        Concrete elastic youngs' modulus (in base units, kPa).
-    G : float
-        Concrete elastic shear modulus (in base units, kPa).
+    Ecm : float
+        Mean value of concrete elastic youngs' modulus (in base units, kPa).
+    Gcm : float
+        Mean value of concrete elastic shear modulus (in base units, kPa).
+    Ecd : float
+        Design value of concrete elastic youngs' modulus (in base units, kPa).
+    Gcd : float
+        Design value of concrete elastic shear modulus (in base units, kPa).
     PARTIAL_FACTOR : float
         Partial factor for concrete, by default 1.0.
     POISSONS_RATIO : float
@@ -113,10 +117,15 @@ class ConcreteBase(BaseModel, ABC):
     fcm: float | None = None
     """Mean value of the compressive strength of concrete cylinders (in MPa).
     """
-    E: float | None = None
-    """Concrete elastic youngs' modulus (in base units, kPa)."""
-    G: float | None = None
-    """Concrete elastic shear modulus (in base units, kPa)."""
+    Ecm: float | None = None
+    """Mean value of concrete elastic youngs' modulus (in base units, kPa)."""
+    Gcm: float | None = None
+    """Mean value of Concrete elastic shear modulus (in base units, kPa)."""
+    Ecd: float | None = None
+    """Design value of concrete elastic youngs' modulus (in base units, kPa).
+    """
+    Gcd: float | None = None
+    """Design value of Concrete elastic shear modulus (in base units, kPa)."""
     POISSONS_RATIO: float = 0.2
     """Poisson's ratio for concrete, by default 0.2."""
     PARTIAL_FACTOR: float = 1.0
@@ -160,11 +169,18 @@ class ConcreteBase(BaseModel, ABC):
         """
         If not provided, sets Young's modulus (E).
         """
-        if instance.E is None:
+        if instance.Ecm is None:
             if instance.fcm is None:
                 raise ValidationError(
                     "Cannot calculate Young's modulus (E) without fcm.")
-            instance.E = 9.5 * (instance.fcm ** (1/3)) * GPa
+            instance.Ecm = 9.5 * (instance.fcm ** (1/3)) * GPa
+
+        if instance.Ecd is None:
+            if instance.fcd is None:
+                raise ValidationError(
+                    "Cannot calculate Young's modulus (E) without fcd.")
+            instance.Ecd = ((57 * ((instance.fcd) * 145)**0.5) / 145) * GPa
+
         return instance
 
     @model_validator(mode='after')
@@ -173,11 +189,18 @@ class ConcreteBase(BaseModel, ABC):
         """
         If not provided, sets shear modulus (G).
         """
-        if instance.G is None:
-            if instance.E is None:
+        if instance.Gcm is None:
+            if instance.Ecm is None:
                 raise ValidationError(
                     "Cannot calculate shear modulus (G) without E.")
-            instance.G = instance.E / (2 * (1 + instance.POISSONS_RATIO))
+            instance.Gcm = instance.Ecm / (2 * (1 + instance.POISSONS_RATIO))
+
+        if instance.Gcd is None:
+            if instance.Ecd is None:
+                raise ValidationError(
+                    "Cannot calculate shear modulus (G) without E.")
+            instance.Gcd = instance.Ecd / (2 * (1 + instance.POISSONS_RATIO))
+
         return instance
 
 

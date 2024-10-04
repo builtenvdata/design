@@ -60,7 +60,7 @@ class Building(BuildingBase):
     example, if equals to 2, the same column section might be varied at
     every two storeys from bottom to top. If None, a constant section is
     used at all storeys.
-    -----
+
     If step size is only 1 storey lower than total number of stories in the
     building a constant section is used for column along the building.
     """

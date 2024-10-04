@@ -185,7 +185,7 @@ class ElasticModelBase(ABC):
         VECXZ = [-1, 0, 0]  # X, Y, and Z components of vecxz
         FACTY = 5/6  # shear shape factor along local Y
         FACTZ = 5/6  # shear shape factor along local Z
-        NUM_INT_PTS = 10  # number of integration points along the element
+        NUM_INT_PTS = 9  # number of integration points along the element
         # Define geometric transformation
         ops.geomTransf('Linear', TRANSF_TAG, *VECXZ)
         # Loop through columns
@@ -194,8 +194,8 @@ class ElasticModelBase(ABC):
             sec = column.line.tag  # section tag
             int_tag = column.line.tag  # integration tag
             nodes = [p.tag for p in column.line.points]  # node tags (i, j)
-            Ec = column.Ec  # youngs' modulus
-            Gc = column.Gc  # shear modulus
+            Ec = column.Ecm  # youngs' modulus
+            Gc = column.Gcm  # shear modulus
             Ag = column.Ag  # gross section area
             Jxx = column.J  # torsional moment of inertia
             if cracked_section:  # using cracked section properties
@@ -228,8 +228,8 @@ class ElasticModelBase(ABC):
             sec = beam.line.tag  # section tag
             int_tag = beam.line.tag  # integration tag
             nodes = [p.tag for p in beam.line.points]  # node tags (i, j)
-            Ec = beam.Ec  # youngs' modulus
-            Gc = beam.Gc  # shear modulus
+            Ec = beam.Ecm  # youngs' modulus
+            Gc = beam.Gcm  # shear modulus
             Ag = beam.Ag  # gross section area
             Jxx = beam.J  # torsional moment of inertia
             if cracked_section:  # using cracked section properties
@@ -466,11 +466,11 @@ class ElasticModelBase(ABC):
             Vy1 = ops.sectionForce(ele, 1, 3)
             My1 = ops.sectionForce(ele, 1, 4)
             Vx1 = ops.sectionForce(ele, 1, 5)  # z is renamed as x outside
-            N9 = ops.sectionForce(ele, 10, 1)
-            Mx9 = ops.sectionForce(ele, 10, 2)  # z is renamed as x outside
-            Vy9 = ops.sectionForce(ele, 10, 3)
-            My9 = ops.sectionForce(ele, 10, 4)
-            Vx9 = ops.sectionForce(ele, 10, 5)  # z is renamed as x outside
+            N9 = ops.sectionForce(ele, 9, 1)
+            Mx9 = ops.sectionForce(ele, 9, 2)  # z is renamed as x outside
+            Vy9 = ops.sectionForce(ele, 9, 3)
+            My9 = ops.sectionForce(ele, 9, 4)
+            Vx9 = ops.sectionForce(ele, 9, 5)  # z is renamed as x outside
             column.forces[load_case] = ColumnForces(N1, Mx1, Vy1, My1, Vx1,
                                                     N9, Mx9, Vy9, My9, Vx9)
 

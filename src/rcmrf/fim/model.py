@@ -1203,7 +1203,7 @@ class FIM:
             "----------",
             "max_disp : float, optional.",
             "    Maximum considered displacement for control node.",
-            f"    By default {max_disp:.2f}"
+            f"    By default {max_disp:.2f}",
             "num_steps : float, optional.",
             "    Number of analysis steps considered in pushover analysis.",
             f"    By default {self.num_steps}.",
@@ -1720,7 +1720,7 @@ class FIM:
             "# ----------",
             "# max_disp : float, optional.",
             "#    Maximum considered displacement for control node.",
-            f"#    By default {max_disp:.2f}"
+            f"#    By default {max_disp:.2f}",
             "# num_steps : float, optional.",
             "#    Number of analysis steps considered in pushover analysis.",
             f"#    By default {self.num_steps}.",

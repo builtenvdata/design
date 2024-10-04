@@ -63,20 +63,18 @@ class Building(BuildingBase):
     OVERSTRENGTH_FACTOR_BEAM_SHEAR = 1.0  # EN 1998-1:2004 5.4.2.2(2)
     """Safety or overstrength factor considered in calculation of capacity
     design shear forces for beams.
-    TODO
-    ----
-    Which one should we use?
-    1.0 for DCM beams, see EN 1998-1:2004 5.4.2.2(2)
-    1.2 for DCH beams, see EN 1998-1:2004 5.5.2.1(3)
+
+    NOTE: Overstrength factor for DCM is considered here.
+    - 1.0 for DCM beams, see EN 1998-1:2004 5.4.2.2(2)
+    - 1.2 for DCH beams, see EN 1998-1:2004 5.5.2.1(3)
     """
     OVERSTRENGTH_FACTOR_COLUMN_SHEAR = 1.1  # EN 1998-1:2004 5.4.2.3(2)
     """Safety or overstrength factor considered in calculation of capacity
     design shear forces for columns.
-    TODO
-    ----
-    Which one should we use?
-    1.1 for DCM columns, see EN 1998-1:2004 5.4.2.3(2)
-    1.3 for DCH columns, see EN 1998-1:2004 5.5.2.2(3)
+
+    NOTE: Overstrength factor for DCM is considered here.
+    - 1.1 for DCM columns, see EN 1998-1:2004 5.4.2.3(2)
+    - 1.3 for DCH columns, see EN 1998-1:2004 5.5.2.2(3)
     """
 
     def __init__(self, taxonomy: TaxonomyData) -> None:

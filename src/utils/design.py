@@ -3,9 +3,6 @@ import numpy as np
 from scipy.optimize import root
 from typing import Tuple, List
 
-# Imports from units library
-from .units import GPa
-
 
 class SectionDesigner:
     """Longititutional reinforcement area calculator class for biaxially loaded
@@ -144,7 +141,7 @@ class SectionDesigner:
 
     def __init__(
         self, Nd: float, Mxd: float, Myd: float, fcd: float,
-        fyd: float, b: float, h: float, rho_l_min: float
+        fyd: float, Es: float, b: float, h: float, rho_l_min: float
     ) -> None:
         """Initializes the ColumnSectionDesigner object.
 
@@ -160,6 +157,8 @@ class SectionDesigner:
             Design value of concrete strength, (kPa)
         fyd : float
             Design value of steel strength, (kPa)
+        Es : float
+            Elastic young modulus of steel, (kPa)
         b : float
             Column width, (m)
         h : float
@@ -177,7 +176,7 @@ class SectionDesigner:
         self.fyd = fyd
         self.cover_b = 0.1 * b  # clear cover + stirrup diam. + 0.5*long.diam.
         self.cover_h = 0.1 * h  # clear cover + stirrup diam. + 0.5*long.diam.
-        self.Es = 200*GPa  # Elasticity modulus of steel, kPa
+        self.Es = Es  # Elasticity modulus of steel, kPa
         self.eps_cu = 0.003
         self.k1 = min(1 - 0.006 * self.fcd / 1000, 0.85)
         self.rho_l_min = rho_l_min

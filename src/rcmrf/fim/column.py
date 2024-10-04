@@ -90,6 +90,36 @@ class Column:
         """
         return self.ele_node_j.tag
 
+    @property
+    def Ecm_q(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Elastic young's modulus of concrete (in base units).
+
+        Note
+        ----
+        Based on quality adjusted concrete strength.
+        """
+        # Use quality adjusted elastic youngs modulus
+        fc_mpa = self.design.fc_q / MPa  # convert to MPa
+        return (22000 * (fc_mpa / 10)**0.3) * MPa
+
+    @property
+    def Gcm_q(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Elastic shear modulus of concrete (in base units).
+
+        Note
+        ----
+        Based on quality adjusted concrete strength.
+        """
+        return self.Ecm_q / (2 * (1 + self.design.concrete.POISSONS_RATIO))
+
     def __init__(
         self, design: ColumnBase, bondslip_factor: float,
         capacity_design: bool, load_factors: Dict[Literal['G', 'Q'], float]
@@ -106,14 +136,6 @@ class Column:
             Flag to check whether capacity shear design is followed or not.
         load_factors : Dict[Literal['G', 'Q'], float]
             Load factors used to compute gravity loads/forces on the column.
-
-        TODO
-        ----
-        Assumed axial force is different than the original implementation.
-        Original axial force is calculated during predesign
-        see line 41 in bim/predesign.py.
-        Similar approach could be used to get axial force.
-        i.e., increase the axial force by the roof, position and storey factors
         """
         self.design = design
         self.bondslip_factor = bondslip_factor
@@ -127,7 +149,6 @@ class Column:
         # self.axial_force = (forces.N1 + forces.N9) / 2
         self.axial_force = -(load_factors['G'] * design.pre_Nq +
                              load_factors['Q'] * design.pre_Ng)
-        # ele load
         self.ele_load = float(design.self_wg * load_factors['G'])
 
     def set_ele_node_i(self) -> None:
@@ -455,9 +476,8 @@ class Column:
         List[float]
             List of elastic column element inputs.
         """
-        # Concrete modulus of elasticity (TODO: why this eqn?)
-        E_mod = (22000 * (self.design.fc_q / (10 * MPa))**0.3) * MPa
-        G_mod = E_mod / 2.4  # shear modulus (for possion coefficient = 0.2)
+        # Elastic stiffness multiplier
+        # Ibarra and Krawinkler (2005), Zareian and Medina (2010)
         stiffness_factor_1 = 10
         stiffness_factor_2 = (stiffness_factor_1 + 1) / stiffness_factor_1
         Iz_mod = self.design.Ix * stiffness_factor_2
@@ -467,8 +487,8 @@ class Column:
         # List of elasticBeamColumn element inputs
         ele_inputs = [
             self.design.line.tag, self.ele_node_i.tag, self.ele_node_j.tag,
-            self.design.Ag, E_mod, G_mod, self.design.J, Iy_mod, Iz_mod,
-            PDELTA_TRANSF_Z
+            self.design.Ag, self.Ecm_q, self.Gcm_q,
+            self.design.J, Iy_mod, Iz_mod, PDELTA_TRANSF_Z
             ]
         # Rounding
         ele_inputs = round_list(ele_inputs)
@@ -605,15 +625,14 @@ class Column:
             betac = 0.65
         else:
             betac = 1.05 - 0.05 * fc_mpa / 6.9
-        # Concrete modulus of elasticity (alternative to the default)
-        Ec = (22000 * (fc_mpa / 10)**0.3) * MPa
-        # Ec = self.Ec
-        # TODO: Steel modulus of elasticity (alternative to the default)
-        Es = 200000 * MPa
-        # Es = self.Es
+        # Concrete modulus of elasticity
+        Ec = self.Ecm_q
+        # Steel modulus of elasticity
+        Es = self.design.Es
+        # Modular ratio
         nyoung = Es / Ec
         # Yield strain of steel bars
-        esy = fsyl/Es
+        esy = fsyl / Es
         # Distance from top fiber to bottom rebars
         dd = h - cover - dbh - 0.5 * dbl_cor
         # Distance from top fiber to top rebars
@@ -687,20 +706,22 @@ class Column:
         # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi (Haselton 2016)
         c_u = 1.0
         # Reinforcing bar buckling coefficient, by Dhakal and Maekawa 2002
-        # NOTE: This part is different than original implementation
-        # TODO This was different than the one in beams? sn = sbh / dbl_cor
         sn = (sbh / dbl_cor) * (fsyl_mpa / 100)**0.5
         # Effective depth: dist. between outer comp. fiber and tens. steel
         d = 0.9*h
         # Level arm: dist. between comp. and tens. forces
         z = 0.9*d
 
-        # Maximum moment capacity in model by Haselton et al. 2016 - Equation 9
-        Mc = 1.13 * My
-        # Alternatively, use ASCE 41-06 Equation 3.17
-        Mc_My = 1.25 * (0.89**niu)*(0.91**(0.01*fc_mpa))
-        # Residual moment capacity in model, 10% of Mc
-        Mr = 0.1*Mc_My*My
+        # Post-yield hardening stiffness - Haselton et al. 2016 - Equation 9
+        Mc_My = 1.13  # NOTE: overwritten by ASCE 41-06, kept as reminder
+        # Post-yield hardening stiffness - ASCE 41-06 Equation 3.17
+        Mc_My = 1.25 * (0.89**niu) * (0.91**(0.01*fc_mpa))
+        #  Residual strength to capping strength ratio - assumed
+        Mr_Mc = 0.1  # 10%
+        # Maximum moment capacity
+        Mc = Mc_My * My
+        # Residual moment capacity
+        Mr = Mr_Mc*Mc
 
         # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
         # TODO: check if notation is consistent with directions
@@ -712,14 +733,9 @@ class Column:
         theta_pc = min(0.10,
                        0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02))
 
-        # Yield rotation capacity - EN 1998-3:2004
-        # TODO: Is the reference equation Equation A.10b?
+        # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
         theta_y1 = fiy * ((Ls + (av*z))/3)
-        # NOTE: This part is different than original implementation
-        # 0.0014 was 0.0013, changed based on Equation A.10b
         theta_y2 = 0.0014 * (1 + 1.5*h/Ls)
-        # NOTE: This part is different than original implementation
-        # 0.125 was 0.13, changed based on Equation A.10b
         theta_y3 = 0.125*fiy*dbl_cor * (fsyl_mpa / (fc_mpa**0.50))
         theta_y = theta_y1 + theta_y2 + (self.bondslip_factor * theta_y3)
 
@@ -798,14 +814,9 @@ class Column:
         Nu_MN = max((-self.axial_force) / MN, 0)  # convert to mN
         # Transverse reinforcement area
         Av = nbh * np.pi * (dbh**2) / 4
-        # Concrete modulus of elasticity (TODO: why this eqn?)
-        E_mod = (22000 * (fc_mpa / 10)**0.3) * MPa
-        G_mod = E_mod / 2.4  # shear modulus (for possion coefficient = 0.2)
         # Limit shear force at initiation of lateral-strength degradation
         # ASCE 41-06 - Equation 6-4
         # LeBorgne and Ghannoum (2014) - Equation 3
-        # NOTE: This part is different than original implementation
-        # TODO: Changed effective depth term from 0.81h to d=0.8h
         k = 1.0  # see ASCE 41-06 - Equation 6-4, vary between 0.7-1.0
         lambda_ = 1.0  # see ASCE 41-06 - Equation 6-4, 1.0 or 0.75
         d = 0.8 * h  # see ASCE 41-06 - Equation 6-4, permitted
@@ -821,26 +832,20 @@ class Column:
         # Shear-spring elastic slope - LeBorgne and Ghannoum (2014) - Eqn. 1
         # NOTE: This part is different than original implementation rigidSlope
         # TODO: The article uses column clear length instead of shear span
-        k_el = (5/6) * (G_mod*Ag/Ln)
+        k_el = (5/6) * (self.Gcm_q*Ag/Ls)
         # Shear-spring backbone degrading slope
         # TODO: Reference?
         k_deg0 = (
             4.5 * Nu * ((
                 (Av * fsyh * 0.9 * h) / (Nu * sbh))
                        * 4.6 + 1)**2)
-        if Nu * sbh == 0.0:
-            print('pause')
         # k_unload = (12*E_mod * Ig) / (Ln**3)
         # k_deg1 = 1 / (1/k_deg0 - 1/k_unload)
         k_deg = k_deg0 / Ln
 
-        # Commented for now, because these are not being used
-        # # Maximum moment capacity based on ASCE 41-06 Equation 3.17
-        # # TODO: This is an inconsistency, I think we should use the
-        # # same equation for both Mc calculations
-        # Mu = Mc_My * My
+        # # Commented for now, because these are not being used
         # # Maximum shear value (upon plastic hinge formation)
-        # Vp = Mu / Ls
+        # Vp = Mc / Ls
         # # Ratio of max. shear to nominal shear strength
         # V_ratio = Vp / Vn
         # # Elastic displacement, at nominal shear strength

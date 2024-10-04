@@ -56,15 +56,6 @@ class Building(BuildingBase):
     SlabClass: Type[Slab]
     StairsClass: Type[Stairs]
     ElasticModelClass: Type[ElasticModel]
-    COLUMN_UNIFORMIZATION_STEP = None
-    """Step size considered for section uniformization in column. For
-    example, if equals to 2, the same column section might be varied at
-    every two storeys from bottom to top. If None, a constant section is
-    used at all storeys. By default None
-    -----
-    If step size is only 1 storey lower than total number of stories in the
-    building a constant section is used for column along the building.
-    """
 
     def __init__(self, taxonomy: TaxonomyData) -> None:
         """Initializes building object.

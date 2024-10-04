@@ -421,7 +421,6 @@ class BeamBase(ABC):
         float
             Characteristic concrete compressive strength (in base units).
         """
-
         return self.concrete.fck * MPa
 
     @property
@@ -432,7 +431,6 @@ class BeamBase(ABC):
         float
             Characteristic steel yield strength (in base units).
         """
-
         return self.steel.fsyk * MPa
 
     @property
@@ -443,7 +441,6 @@ class BeamBase(ABC):
         float
             Mean steel yield strength (in base units).
         """
-
         return self.steel.fsym * MPa
 
     @property
@@ -477,26 +474,45 @@ class BeamBase(ABC):
         return self.steel.fsyd * MPa
 
     @property
-    def Ec(self) -> float:
+    def Ecm(self) -> float:
         """
         Returns
         -------
         float
-            Elastic young's modulus of concrete (in base units).
+            Mean value of elastic young's modulus of concrete (in base units).
         """
-
-        return self.concrete.E
+        return self.concrete.Ecm
 
     @property
-    def Gc(self) -> float:
+    def Ecd(self) -> float:
         """
         Returns
         -------
         float
-            Elastic shear modulus of concrete (in base units).
+            Design value of elastic young's modulus of concrete
+            (in base units).
         """
+        return self.concrete.Ecd
 
-        return self.concrete.G
+    @property
+    def Gcm(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Mean value of elastic shear modulus of concrete (in base units).
+        """
+        return self.concrete.Gcm
+
+    @property
+    def Gcd(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Design value of elastic shear modulus of concrete (in base units).
+        """
+        return self.concrete.Gcd
 
     @property
     def Es(self) -> float:
@@ -506,8 +522,7 @@ class BeamBase(ABC):
         float
             Elastic young's modulus of steel (in base units).
         """
-
-        return self.steel.E
+        return self.steel.Es
 
     @property
     def Ag(self) -> float:
@@ -904,13 +919,12 @@ class BeamBase(ABC):
         else:
             betac = 1.05 - 0.05 * self.fck / (6.9 * MPa)
         # Yield strain of steel bars
-        esy = self.fsyk/self.Es
-        # Concrete modulus of elasticity (alternative to the default)
-        Ec = ((57000 * ((self.fcd/MPa) * 145)**0.5) / 145) * MPa
-        # Ec = self.Ec
-        # TODO: Steel modulus of elasticity (alternative to the default)
-        Es = 200000 * MPa
-        # Es = self.Es
+        esy = self.fsyk / self.Es
+        # Concrete modulus of elasticity
+        Ec = self.Ecd
+        # Steel modulus of elasticity
+        Es = self.Es
+        # Modular ratio
         nyoung = Es / Ec
         # Distance from top fiber to bottom rebars
         if hasattr(self, 'dbh'):
@@ -937,9 +951,8 @@ class BeamBase(ABC):
         # Panagiotakos and Fardis 2001 - Equation 4 & 5
         Acomp_cntrl = rhol_tens + rhol_comp
         Atens_cntrl = rhol_tens + rhol_comp
-        # TODO: I think B value is wrong - (1 + dd_prime/dd) should be removed
-        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
-        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
+        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
+        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         # Yielding is controlled by the tension steel
         control = np.ones(len(dd))
         A_to_use = Atens_cntrl
@@ -990,13 +1003,12 @@ class BeamBase(ABC):
         else:
             betac = 1.05 - 0.05 * self.fck / (6.9 * MPa)
         # Yield strain of steel bars
-        esy = self.fsyk/self.Es
-        # Concrete modulus of elasticity (alternative to the default)
-        Ec = ((57000 * ((self.fcd/MPa) * 145)**0.5) / 145) * MPa
-        # Ec = self.Ec
-        # TODO: Steel modulus of elasticity (alternative to the default)
-        Es = 200000 * MPa
-        # Es = self.Es
+        esy = self.fsyk / self.Es
+        # Concrete modulus of elasticity
+        Ec = self.Ecd
+        # Steel modulus of elasticity
+        Es = self.Es
+        # Modular ratio
         nyoung = Es / Ec
         # Distance from top fiber to bottom rebars
         if hasattr(self, 'dbh'):
@@ -1023,9 +1035,8 @@ class BeamBase(ABC):
         # Panagiotakos and Fardis 2001 - Equation 4 & 5
         Acomp_cntrl = rhol_tens + rhol_comp
         Atens_cntrl = rhol_tens + rhol_comp
-        # TODO: I think B value is wrong - (1 + dd_prime/dd) should be removed
-        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
-        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
+        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
+        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         # Yielding is controlled by the tension steel
         control = np.ones(len(dd))
         A_to_use = Atens_cntrl

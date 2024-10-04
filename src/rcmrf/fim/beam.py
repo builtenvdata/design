@@ -82,6 +82,36 @@ class Beam:
         """
         return self.ele_node_j.tag
 
+    @property
+    def Ecm_q(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Elastic young's modulus of concrete (in base units).
+
+        Note
+        ----
+        Based on quality adjusted concrete strength.
+        """
+        # Use quality adjusted elastic youngs modulus
+        fc_mpa = self.design.fc_q / MPa  # convert to MPa
+        return (22000 * (fc_mpa / 10)**0.3) * MPa
+
+    @property
+    def Gcm_q(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Elastic shear modulus of concrete (in base units).
+
+        Note
+        ----
+        Based on quality adjusted concrete strength.
+        """
+        return self.Ecm_q / (2 * (1 + self.design.concrete.POISSONS_RATIO))
+
     def __init__(self, design: BeamBase, bondslip_factor: float,
                  load_factors: Dict[Literal['G', 'Q'], float]) -> None:
         """Initialize the Beam object.
@@ -395,10 +425,14 @@ class Beam:
         # Shear span, assuming equal to 50% of the free length of the element
         ls = ln/2  # NOTE: Could be varied with intensity of loading, but ok.
         niu = 0.0  # Axial load ratio, assuming beams do not have any
+        # Post-yield hardening stiffness - Haselton et al. 2016 - Equation 9
+        Mc_My = 1.13  # NOTE: overwritten by ASCE 41-06, kept as reminder
+        # Post-yield hardening stiffness - ASCE 41-06 Equation 3.17
+        Mc_My = 1.25 * (0.89**niu) * (0.91**(0.01*fc_mpa))
+        #  Residual strength to capping strength ratio - assumed
+        Mr_Mc = 0.1  # 10%
         # Reinforcing bar buckling coefficient, by Dhakal and Maekawa 2002
         sn = (sbh[0] / dbl_t1) * (fsyl_mpa / 100)**0.5
-        # Post-yield hardening stiffness - TODO: different than Equation 9
-        Mc_My = 1.25 * (0.91**(0.01*fc_mpa))
         # Shear cracking is expected to precede flexural yield EC8-3 pp 41
         av = 1.0
         z = 0.9 * (0.9*h)  # lever arm
@@ -409,35 +443,31 @@ class Beam:
         # end sections of the beam (i and j) - Panagiotakos and Fardis (2001)
         My_top, fiy_top = self._get_my('negative')
         My_bot, fiy_bot = self._get_my('positive')
-        # Maximum moment capacity in model by Haselton et al. 2016 - Equation 9
-        Mc_top = 1.13 * My_top
-        Mc_bot = 1.13 * My_bot
-        # Residual moment capacity in model, 10% of Mc
-        Mr_top = 0.1*Mc_My*My_top
-        Mr_bot = 0.1*Mc_My*My_bot
+        # Maximum moment capacity
+        Mc_top = Mc_My * My_top
+        Mc_bot = Mc_My * My_bot
+        # Residual moment capacity
+        Mr_top = Mr_Mc*Mc_top
+        Mr_bot = Mr_Mc*Mc_bot
 
         # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
         c_u = 1.0  # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi
         theta_cap_pl_top = 0.12 * (1 + 0.55 * self.bondslip_factor) * \
             (0.16**niu) * ((0.02 + 40*rhoh)**0.43) * \
             (0.54**(0.01*c_u*fc_mpa)) * (0.66**(0.1*sn)) * (2.27**(10.0*rhol))
+        # TODO: This should be changed, use Equation 7.
+        ratio_bot_top = self.design.rhol_bot / self.design.rhol_top
+        theta_cap_pl_bot = ratio_bot_top * theta_cap_pl_top
         # Post-capping rotation capacity by Haselton et al. 2016 - Equation 8
         theta_pc_top = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
         theta_pc_top[theta_pc_top >= 0.10] = 0.10
-        # TODO: where does this come from? Equation 7? It does not look correct
-        ratio_bot_top = self.design.rhol_bot / self.design.rhol_top
-        theta_cap_pl_bot = ratio_bot_top * theta_cap_pl_top
-        theta_pc_bot = ratio_bot_top * theta_pc_top
+        theta_pc_bot = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
+        theta_pc_bot[theta_pc_bot >= 0.10] = 0.10
 
-        # Yield rotation capacity - EN 1998-3:2004
-        # TODO: Is the reference equation Equation A.10b?
+        # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
         theta_y1_top = fiy_top * ((ls + (av*z))/3)
         theta_y1_bot = fiy_bot * ((ls + (av*z))/3)
-        # NOTE: This part is different than original implementation
-        # 0.0014 was 0.0013, changed based on Equation A.10b
         theta_y2 = 0.0014 * (1 + 1.5*h/ls)
-        # NOTE: This part is different than original implementation
-        # 0.125 was 0.13, changed based on Equation A.10b
         theta_y3_top = 0.125*fiy_top*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
         theta_y3_bot = 0.125*fiy_bot*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
         theta_y_top = (
@@ -515,10 +545,9 @@ class Beam:
         List[float]
             List of elastic beam element inputs.
         """
-        # Concrete modulus of elasticity (TODO: why this eqn?)
-        E_mod = (22000 * (self.design.fc_q / (10 * MPa))**0.3) * MPa
-        G_mod = E_mod / 2.4  # shear modulus (for possion coefficient = 0.2)
-        stiffness_factor_1 = 10  # Reference for stiffness modifications?
+        # Elastic stiffness multiplier
+        # Ibarra and Krawinkler (2005), Zareian and Medina (2010)
+        stiffness_factor_1 = 10
         stiffness_factor_2 = (stiffness_factor_1 + 1) / stiffness_factor_1
         Iz_mod = self.design.Ix * stiffness_factor_2
         Iy_mod = self.design.Iy * stiffness_factor_2
@@ -527,7 +556,8 @@ class Beam:
         # List of elasticBeamColumn element inputs
         ele_inputs = [
             self.ele_tag, self.ele_node_i.tag, self.ele_node_j.tag,
-            self.design.Ag, E_mod, G_mod, self.design.J, Iy_mod, Iz_mod
+            self.design.Ag, self.Ecm_q, self.Gcm_q,
+            self.design.J, Iy_mod, Iz_mod
             ]
         # Append geometric transformation
         if self.design.direction == 'x':
@@ -610,15 +640,13 @@ class Beam:
             betac = 0.65
         else:
             betac = 1.05 - 0.05 * fc / (6.9 * MPa)
-        # Concrete modulus of elasticity (alternative to the default)
-        Ec = (22000 * (fc / (10 * MPa))**0.3) * MPa
-        # Ec = self.Ec
-        # TODO: Steel modulus of elasticity (alternative to the default)
-        Es = 202000 * MPa
-        # Es = self.Es
+        # Concrete modulus of elasticity
+        Ec = self.Ecm_q
+        # Steel modulus of elasticity
+        Es = self.design.Es
         nyoung = Es / Ec
         # Yield strain of steel bars
-        esy = fsyl/Es
+        esy = fsyl / Es
         # Distance from ext. concrete fiber (comp.) to the rebars (comp.)
         dd_prime = h - dd
         # Balanced c value: dist. to neutral axis from ext. conc. fiber (comp.)
@@ -632,10 +660,6 @@ class Beam:
         # Panagiotakos and Fardis 2001 - Equation 4 & 5
         Acomp_cntrl = rhol_tens + rhol_comp
         Atens_cntrl = rhol_tens + rhol_comp
-        # NOTE: This part is different than original implementation
-        # TODO: B value is wrong - (1 + dd_prime/dd) is removed
-        # Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
-        # Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)*(1 + dd_prime/dd)
         Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         # Yielding is controlled by the tension steel

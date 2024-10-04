@@ -120,26 +120,26 @@ class BuildingBase(ABC):
     example, if equals to 2, the same column section might be varied at
     every two storeys from bottom to top. If None, a constant section is
     used at all storeys. By default None.
-    -----
+
     If step size is only 1 storey lower than total number of stories in the
     building a constant section is used for column along the building."""
     OVERSTRENGTH_FACTOR_COLUMN_MOMENT: Optional[float] = None
     """Safety or overstrength factor considered in calculation of capacity
     design moments for columns (strong-column weak-beam principle).
     By default None.
-    -----
+
     If None, column capacity design moments are not considered during
     the design."""
     OVERSTRENGTH_FACTOR_BEAM_SHEAR: Optional[float] = None
     """Safety or overstrength factor considered in calculation of capacity
     design shear forces for beams. By default None.
-    -----
+
     If None, beam capacity design shear forces are not considered during
     the design."""
     OVERSTRENGTH_FACTOR_COLUMN_SHEAR: Optional[float] = None
     """Safety or overstrength factor considered in calculation of capacity
     design shear forces for columns. By default None.
-    -----
+
     If None, column capacity design shear forces are not considered during
     the design."""
 

@@ -315,10 +315,10 @@ class Column(ColumnBase):
             My9d = max(abs(force.My9), My9d_ecc)
 
             Asl_1_x, Asl_1_y = SectionDesigner(
-                N1d, Mx1d, My1d, self.fcd, self.fsyd,
+                N1d, Mx1d, My1d, self.fcd, self.fsyd, self.Es,
                 self.bx, self.by, self.rhol_min).get_long_reinf_area()
             Asl_9_x, Asl_9_y = SectionDesigner(
-                N9d, Mx9d, My9d, self.fcd, self.fsyd,
+                N9d, Mx9d, My9d, self.fcd, self.fsyd, self.Es,
                 self.bx, self.by, self.rhol_min).get_long_reinf_area()
 
             Asl_x = max(Asl_x, max(Asl_1_x, Asl_9_x))
