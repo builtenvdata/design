@@ -108,7 +108,7 @@ class FIM:
         load_factors: Dict[Literal['G', 'Q'], float] = {'G': 1.0, 'Q': 0.3},
         mass_factors: Dict[Literal['G', 'Q'], float] = {'G': 1.0, 'Q': 0.3},
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
-        max_drift: float = 0.05, num_steps: int = 500
+        max_drift: float = 0.05, num_steps: int = 1000
     ) -> None:
         """Initialize FIM object.
 
@@ -138,7 +138,7 @@ class FIM:
             By default 0.05.
         num_steps : int, optional
             Number of steps which will be considered during the analysis.
-            By default 500.
+            By default 1000.
         """
 
         self.design = design
