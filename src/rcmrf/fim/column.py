@@ -822,7 +822,7 @@ class Column:
         d = 0.8 * h  # see ASCE 41-06 - Equation 6-4, permitted
         M_V_rat = Ls  # Largest ratio of moment to shear, assumed
         M_Vd_rat = min(max(M_V_rat/d, 2), 4)  # see ASCE 41-06 - Equation 6-4
-        Vn = k*(Av * fsyh_mpa * d / sbh) + k*lambda_*(
+        Vn = k * (Av * fsyh_mpa * d / sbh) + k * lambda_ * (
             (fc_mpa**0.5)
             / (2 * M_Vd_rat)
             * (1 + (2 * Nu_MN) / ((fc_mpa**0.5) * Ag)) ** 0.5
@@ -830,15 +830,12 @@ class Column:
         # Convert from MPa units to based units
         Vn *= MN
         # Shear-spring elastic slope - LeBorgne and Ghannoum (2014) - Eqn. 1
-        # NOTE: This part is different than original implementation rigidSlope
-        # TODO: The article uses column clear length instead of shear span
-        k_el = (5/6) * (self.Gcm_q*Ag/Ls)
+        k_el = (5/6) * (self.Gcm_q * Ag / Ln)
         # Shear-spring backbone degrading slope
         # TODO: Reference?
         k_deg0 = (
-            4.5 * Nu * ((
-                (Av * fsyh * 0.9 * h) / (Nu * sbh))
-                       * 4.6 + 1)**2)
+            4.5 * Nu * (((Av * fsyh * 0.9 * h) / (Nu * sbh)) * 4.6 + 1) ** 2
+        )
         # k_unload = (12*E_mod * Ig) / (Ln**3)
         # k_deg1 = 1 / (1/k_deg0 - 1/k_unload)
         k_deg = k_deg0 / Ln

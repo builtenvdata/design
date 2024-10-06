@@ -3,6 +3,7 @@ import numpy as np
 from typing import Optional, List, Dict, Literal, Tuple
 import openseespy.opensees as ops
 from pathlib import Path
+import vfo.vfo as vfo
 
 # Imports from fim library
 from .constants import (
@@ -62,8 +63,8 @@ class FIM:
         'UNI': Uniform loading.
     max_drift : float
         The drift value used to calculate maximum disp. of control node.
-    num_steps : int
-        Number of steps which will be considered during the analysis.
+    dincr: float
+        First displacement increment considered during nspa.
     """
 
     design: BuildingBase
@@ -99,16 +100,16 @@ class FIM:
     - 'UNI': Uniform loading.
     """
     max_drift: float
-    "The drift value used to calculate maximum disp. of control node."
-    num_steps: int
-    """Number of steps which will be considered during the analysis."""
+    """The drift value used to calculate maximum disp. of control node."""
+    dincr: float
+    """First displacement increment considered during nspa."""
 
     def __init__(
         self, design: BuildingBase,
         load_factors: Dict[Literal['G', 'Q'], float] = {'G': 1.0, 'Q': 0.3},
         mass_factors: Dict[Literal['G', 'Q'], float] = {'G': 1.0, 'Q': 0.3},
         scheme: Literal['FMP', 'EQL', 'MPP', 'TRI', 'UNI'] = 'EQL',
-        max_drift: float = 0.05, num_steps: int = 1000
+        max_drift: float = 0.05, dincr: float = 0.001
     ) -> None:
         """Initialize FIM object.
 
@@ -136,17 +137,16 @@ class FIM:
         max_drift : float, optional
             The drift value used to calculate maximum disp. of control node.
             By default 0.05.
-        num_steps : int, optional
-            Number of steps which will be considered during the analysis.
-            By default 1000.
+        dincr: float
+            First displacement increment considered during nspa.
+            By default 0.001.
         """
-
         self.design = design
         self.load_factors = load_factors
         self.mass_sources = mass_factors
         self.scheme = scheme
         self.max_drift = max_drift
-        self.num_steps = num_steps
+        self.dincr = dincr
         self.foundations = []
         self.floors = []
         self.floor_joints = []
@@ -261,8 +261,8 @@ class FIM:
         """
         # Joint flexibility model
         if self.design.beam_type == 1:  # Wide beams are used.
-            # TODO: Rigid joints are imposed in the case of wide beams to
-            # force damage localization (discuss this, ref?).
+            # Rigid joints are imposed in the case of wide beams to
+            # force damage localization.
             flex_model = 'rigid'
         else:  # Based on quality and design class for emergent beam cases.
             flex_model = self.design.quality.model.joint
@@ -413,7 +413,7 @@ class FIM:
         ops.wipeAnalysis()
 
     def do_modal(
-        self, num_modes: int = 3, report_file: Optional[str] = None,
+        self, num_modes: int = 3, out_dir: Optional[str | Path] = None,
         print_screen: bool = False, normalisation: bool = True
     ) -> Dict[str, List[float]]:
         """Performs modal analysis.
@@ -422,9 +422,10 @@ class FIM:
         ----------
         num_modes : int, optional
             Number of modes for whose properties are calculated. By default 3.
-        report_file : Optional[str], optional
-            Path the modal properties report file, if None report is not
-            generated. By default None.
+        out_dir : bool, optional
+            Output directory to save the modal properties and eigen vectors
+            for the floor retained nodes. If None, these are not saved.
+            By default None.
         print_screen : bool, optional
             Flag to print modal properties on the screen. By default False.
         normalisation : bool, optional
@@ -441,16 +442,6 @@ class FIM:
         ----
         For now print screen does not work.
         """
-        # Set modal analysis arguments
-        args = []
-        if print_screen:
-            args.append('-print')
-        if report_file:
-            args.extend(['-file', report_file])
-        if normalisation:
-            args.append('-unorm')
-        args.append('-return')
-
         # Build the model
         self.build()
 
@@ -474,6 +465,37 @@ class FIM:
                               "something is wrong...\n" +
                               "Try to reduce number of modes to determine...")
 
+        # Save eigen vectors for retained floor nodes
+        if out_dir:
+            # Create the output directory
+            out_dir = Path(out_dir)
+            make_dir(out_dir)
+            # Modal properties directory
+            modal_path = (out_dir / 'ModalProperties.txt').as_posix()
+            # Save eigen vectors for retained floor nodes
+            nodes = [floor.rnode.tag for floor in self.floors]
+            for i in range(1, num_modes+1):
+                modal_disps = []
+                for node in nodes:
+                    disps = ', '.join([
+                        f'{disp}' for disp in ops.nodeEigenvector(node, i)
+                        ])
+                    modal_disps.append(f'{node}, {disps}')
+                modal_disps = '\n'.join(modal_disps)
+                eigen_path = (out_dir / f'EigenVectors_Mode{i}.txt').as_posix()
+                with open(eigen_path, 'w') as file:
+                    file.write(modal_disps)
+
+        # Set modal analysis arguments
+        args = []
+        if print_screen:
+            args.append('-print')
+        if out_dir:
+            args.extend(['-file', modal_path])
+        if normalisation:
+            args.append('-unorm')
+        args.append('-return')
+
         # Perform modal analysis
         modal_properties = ops.modalProperties(*args)
 
@@ -481,7 +503,7 @@ class FIM:
 
     def do_nspa(
         self, ctrl_dof: Literal[1, 2],
-        report_file_path: Optional[Path | str] = None
+        out_dir: Optional[str | Path] = None,
     ) -> Tuple[List[float], List[float]]:
         """Performs nonlinear static pushover analysis (NSPA).
 
@@ -491,10 +513,10 @@ class FIM:
             Control degrees of freedom for loading.
             1: X-direction.
             2: Y-direction.
-        report_file_path: Path | str | None, optional
-            Path to the report while which contains control node or roof node
-            displacement against base shear force.
-            If not None, report file is generated otherwise it is not.
+        out_dir : bool, optional
+            Output directory to save the modal properties and eigen vectors
+            for the floor retained nodes. If None, these are not saved.
+            By default None.
 
         Return
         ------
@@ -503,9 +525,11 @@ class FIM:
         base_shear : List[float]
             Base shear value obtained as sum of the reaction forces.
         """
+
         # Get NSPA loading parameters
-        nodes, loads, ctrl_node, max_disp = \
+        nodes, loads, ctrl_node = \
             self.__get_nspa_loading_parameters(ctrl_dof)
+
         # Add NSPA time-series and load pattern to ops domain
         ops.timeSeries('Linear', NSPA_TS_TAG)
         ops.pattern('Plain', NSPA_P_TAG, NSPA_TS_TAG)
@@ -513,16 +537,57 @@ class FIM:
         for node, load_values in zip(nodes, loads):
             ops.load(node, *load_values)
 
+        # Set foundation nodes
+        supports = [
+            found.foundation_node.tag for found in self.foundations
+            ]
+        # Set floor nodes
+        floors = [floor.rnode.tag for floor in self.floors]
+        # Base level coordinate
+        base_level = min([ops.nodeCoord(node, 3) for node in supports])
+
+        # Set the recorders
+        if out_dir:
+            # Create the output directory
+            out_dir = Path(out_dir)
+            make_dir(out_dir)
+            # Directions per dof
+            if ctrl_dof == 1:
+                direction = 'x'
+            elif ctrl_dof == 2:
+                direction = 'y'
+            if not Path.exists(out_dir):
+                Path.mkdir(out_dir)
+            reaction_file_path = (
+                out_dir / f'support_reactions_{direction}.out'
+                ).as_posix()
+            disp_file_path = (
+                out_dir / f'storey_displacements_{direction}.out'
+                ).as_posix()
+            storey_heights_file_path = (
+                out_dir / f'storey_heights_{direction}.out'
+                ).as_posix()
+            ops.recorder('Node', '-file', disp_file_path, '-node', *floors,
+                         '-dof', ctrl_dof, 'disp')
+            ops.recorder('Node', '-file', reaction_file_path, '-node',
+                         *supports, '-dof', ctrl_dof, 'reaction')
+            # Save storey heights
+            with open(storey_heights_file_path, 'w') as file:
+                for node in floors:
+                    file.write(f'{ops.nodeCoord(node, 3) - base_level}\n')
+
         # Set some analysis parameters
-        dincr = max_disp / self.num_steps
-        test_tolerance = 1.0e-6
+        max_disp = self.max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)
+        dincr = self.dincr
+        tol_init = 1.0e-6
+        iter_init = 20
         ops.wipeAnalysis()
         ops.system('UmfPack')
         ops.numberer('RCM')
         ops.constraints('Penalty', 1e12, 1e12)
-        ops.test('NormDispIncr', test_tolerance, 30, 0)
+        ops.test('NormDispIncr', tol_init, iter_init)
         ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
-        ops.algorithm('KrylovNewton')
+        ops.algorithm('Newton')
         ops.analysis('Static')
 
         # Start performing the analysis
@@ -531,49 +596,56 @@ class FIM:
         ok = 0
         cont = True
         while ok == 0 and cont:
-            ops.test('NormDispIncr', test_tolerance, 30, 0)
+            # Perform the analysis for a single step with initial settings
+            ops.test('NormDispIncr', tol_init, iter_init)
             ops.integrator('DisplacementControl', ctrl_node, ctrl_dof, dincr)
+            ops.algorithm('Newton')
             ok = ops.analyze(1)
-            if ok != 0:  # try other algorithms
-                ok = self.__set_nspa_algorithm(ok, test_tolerance)
-            if ok != 0:  # reduce dincr
+            # Try other algorithms
+            if ok != 0:
+                ok = self.__set_nspa_algorithm(ok, tol_init)
+            # Reduce dincr to an half
+            if ok != 0:
                 ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5*dincr)
-                ok = self.__set_nspa_algorithm(ok, test_tolerance)
-            if ok != 0:  # increase tolerance
-                ok = self.__set_nspa_algorithm(ok, 10*test_tolerance)
-            if ok != 0:  # reduce dincr and increase tolerance
+                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5*dincr
+                    )
+                ok = self.__set_nspa_algorithm(ok, tol_init)
+            # Reduce dincr to a quarter
+            if ok != 0:
                 ops.integrator(
-                    'DisplacementControl', ctrl_node, ctrl_dof, 0.5*dincr)
-                ok = self.__set_nspa_algorithm(ok, 10*test_tolerance)
+                    'DisplacementControl', ctrl_node, ctrl_dof, 0.25*dincr
+                    )
+                ok = self.__set_nspa_algorithm(ok, tol_init)
+            # Increase tolerance by factor of 10
+            if ok != 0:
+                ok = self.__set_nspa_algorithm(ok, 10*tol_init)
+            # increase tolerance by factor of 100
+            if ok != 0:
+                ok = self.__set_nspa_algorithm(ok, 100*tol_init)
 
+            # Get the base shear force
             ops.reactions()
             current_disp = ops.nodeDisp(ctrl_node, ctrl_dof)
             current_shear = abs(sum(
                 [ops.nodeReaction(found.foundation_node.tag, ctrl_dof)
                     for found in self.foundations]))
             # current_shear = ops.getTime()
-
+            # Set continue flag
             cont = (current_disp < max_disp and
                     current_shear < 50000 and
                     current_shear >= 0.2*max(base_shear))
+            # Append base shear and control node displacement
             if ok == 0 and cont:
                 base_shear.append(current_shear)
                 ctrl_disp.append(current_disp)
 
         # Wipe the numerical model
         ops.wipe()
-
-        # Save main pushover results
-        if report_file_path:
-            data = np.array(list(zip(ctrl_disp, base_shear)))
-            np.savetxt(report_file_path, data, delimiter=',',
-                       header='Roof Displacement [m], Base Shear [kN]',
-                       comments='')
-
+        # Return base shear and control node displacement history
         return ctrl_disp, base_shear
 
-    def __set_nspa_algorithm(self, ok: int, test_tol: float) -> None:
+    def __set_nspa_algorithm(self, ok: int, tol: float,
+                             iter: int = 100) -> None:
         """Sets the solution algorithm for NSPA in ops domain.
 
         Parameters
@@ -581,38 +653,42 @@ class FIM:
         ok : int
             Result of the last analysis step in OpenSees.
         tol : float
-            Test tolerance considered in the next analysis step.
+            The tolerance criteria used to check for convergence.
+        iter : int, optional
+            The max number of iterations to check before returning failure.
+            By default 100.
 
         Return
         ------
         int
             Result of the new analysis step in OpenSees.
         """
+        # Try KrylovNewton
         if ok != 0:
-            ops.test('NormDispIncr', test_tol, 10)
+            ops.test('NormDispIncr', tol, iter)
+            ops.algorithm('KrylovNewton')
+            ok = ops.analyze(1)
+        # Try NewtonLineSearch algorithm
+        if ok != 0:
+            ops.test('NormDispIncr', tol, iter)
             ops.algorithm('NewtonLineSearch', 0.1)
             ok = ops.analyze(1)
-
+        # Try Broyden algorithm
         if ok != 0:
-            ops.test('NormDispIncr', test_tol, 10)
-            ops.algorithm('Broyden', 50)
+            ops.test('NormDispIncr', tol, iter)
+            ops.algorithm('Broyden')
             ok = ops.analyze(1)
-
+        # Try Broyden–Fletcher–Goldfarb–Shanno (BFGS) algorithm
         if ok != 0:
-            ops.test('NormDispIncr', test_tol, 10)
-            ops.algorithm('ModifiedNewton', 50)
-            ok = ops.analyze(1)
-
-        if ok != 0:
-            ops.test('NormDispIncr', test_tol, 10)
+            ops.test('NormDispIncr', tol, iter)
             ops.algorithm('BFGS')
             ok = ops.analyze(1)
-
+        # Return the analysis result
         return ok
 
     def __get_nspa_loading_parameters(
         self, ctrl_dof: Literal[1, 2]
-    ) -> Tuple[List[int], List[float], int, float]:
+    ) -> Tuple[List[int], List[float], int]:
         """Gets the parameters required for nspa loading.
 
         Parameters
@@ -630,8 +706,6 @@ class FIM:
             List of loads which corresponds to each node deemed to be pushed.
         ctrl_node : int
             Tag of control node (determined based on max height).
-        max_disp : float
-            Maximum considered displacement for the control node in nspa.
         """
         # Find all required metrics for load computations.
         nodes = []
@@ -674,17 +748,16 @@ class FIM:
         # Make loading positive
         if np.sum(loads) < 0:
             loads = -1.0 * loads
-        # Get control node and maximum displacement for control node
+        # Get control node
         inds = heights.argsort()[::-1]
         ctrl_node = nodes[inds[0]]
-        max_disp = float(self.max_drift * max(heights))
         loads = loads.tolist()
         if ctrl_dof == 1:
             loads = [[load, 0, 0, 0, 0, 0] for load in loads]
         elif ctrl_dof == 2:
             loads = [[0, load, 0, 0, 0, 0] for load in loads]
 
-        return nodes, loads, ctrl_node, max_disp
+        return nodes, loads, ctrl_node
 
     def to_py(self, directory: Path | str) -> None:
         """Exports the numerical model files in Python format.
@@ -1181,7 +1254,7 @@ class FIM:
             List of lines representing do_nspa_{direction} method.
         """
         # Get NSPA loading parameters
-        nodes, loads, ctrl_node, max_disp = \
+        nodes, loads, ctrl_node = \
             self.__get_nspa_loading_parameters(ctrl_dof)
         # Set support nodes
         supports = ', '.join([
@@ -1201,12 +1274,12 @@ class FIM:
             "",
             "Parameters",
             "----------",
-            "max_disp : float, optional.",
-            "    Maximum considered displacement for control node.",
-            f"    By default {max_disp:.2f}",
-            "num_steps : float, optional.",
-            "    Number of analysis steps considered in pushover analysis.",
-            f"    By default {self.num_steps}.",
+            "max_drift : float, optional.",
+            "    Maximum considered drift value for the control node.",
+            f"    By default {self.max_drift}",
+            "dincr : float, optional.",
+            "    First displacement increment considered during the analysis.",
+            f"    By default {self.dincr}.",
             "",
             "Return",
             "------",
@@ -1244,7 +1317,7 @@ class FIM:
             content.append(f"ops.load({node}, {values_str})")
         # Add lines for setting recorders
         content.append("")
-        content.append("# Set recorders")
+        content.append("# Set the recorders")
         content.append(f"ctrl_node = {ctrl_node}  # Control node")
         content.append(f"ctrl_dof = {ctrl_dof}  # Control dof")
         content.append(f"supports = [{supports}]  # Foundation nodes")
@@ -1255,23 +1328,32 @@ class FIM:
                        "'-node', *supports, '-dof', ctrl_dof, 'reaction')")
         # Add lines for saving storey heights
         content.append("")
+        content.append("# Base level coordinate")
+        content.append(
+            "base_level = min([ops.nodeCoord(node, 3) for node in supports])"
+            )
         content.append("# Save storey heights")
         content.append("with open(storey_heights_file_path, 'w') as file:")
         content.append("    for node in floors:")
-        content.append("        file.write(f'{ops.nodeCoord(node)[2]}\\n')")
+        content.append(
+            "        file.write(f'{ops.nodeCoord(node, 3) - base_level}\\n')"
+            )
         # Add lines for setting the analysis parameters
         content.append("")
         content.append("# Set some analysis parameters")
-        content.append("dincr = max_disp / num_steps")
-        content.append("test_tolerance = 1.0e-6")
+        content.append(
+            "max_disp = max_drift * (ops.nodeCoord(ctrl_node, 3) - base_level)"
+            )
+        content.append("tol_init = 1.0e-6")
+        content.append("iter_init = 20")
         content.append("ops.wipeAnalysis()")
         content.append("ops.system('UmfPack')")
         content.append("ops.numberer('RCM')")
         content.append("ops.constraints('Penalty', 1e12, 1e12)")
-        content.append("ops.test('NormDispIncr', test_tolerance, 30, 0)")
+        content.append("ops.test('NormDispIncr', tol_init, iter_init)")
         content.append("ops.integrator('DisplacementControl', ctrl_node, "
                        "ctrl_dof, dincr)")
-        content.append("ops.algorithm('KrylovNewton')")
+        content.append("ops.algorithm('Newton')")
         content.append("ops.analysis('Static')")
         # Add lines for performing the analysis
         content.append("")
@@ -1281,36 +1363,48 @@ class FIM:
         content.append("ok = 0")
         content.append("cont = True")
         content.append("while ok == 0 and cont:")
-        content.append("    ops.test('NormDispIncr', test_tolerance, 30, 0)")
+        content.append("    ops.test('NormDispIncr', tol_init, iter_init)")
         content.append("    ops.integrator('DisplacementControl', ctrl_node, "
                        "ctrl_dof, dincr)")
+        content.append("    ops.algorithm('Newton')")
         content.append("    ok = ops.analyze(1)")
         content.append("    if ok != 0:  # try other algorithms")
-        content.append("        ok = _set_algorithm(ok, test_tolerance)")
-        content.append("    if ok != 0:  # reduce dincr")
+        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("    if ok != 0:  # reduce dincr to an half")
         content.append("        ops.integrator('DisplacementControl', "
                        "ctrl_node, ctrl_dof, 0.5*dincr)")
-        content.append("        ok = _set_algorithm(ok, test_tolerance)")
-        content.append("    if ok != 0:  # increase tolerance")
-        content.append("        ok = _set_algorithm(ok, 10*test_tolerance)")
+        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("    if ok != 0:  # reduce dincr to a quarter")
+        content.append("        ops.integrator('DisplacementControl', "
+                       "ctrl_node, ctrl_dof, 0.25*dincr)")
+        content.append("        ok = _set_algorithm(ok, tol_init)")
+        content.append("    if ok != 0:  # increase tolerance by factor of 10")
+        content.append("        ok = _set_algorithm(ok, 10*tol_init)")
         content.append(
-            "    if ok != 0:  # reduce dincr and increase tolerance")
-        content.append("        ops.integrator('DisplacementControl', "
-                       "ctrl_node, ctrl_dof, 0.5*dincr)")
-        content.append("        ok = _set_algorithm(ok, 10*test_tolerance)")
+            "    if ok != 0:  # increase tolerance by factor of 100"
+        )
+        content.append("        ok = _set_algorithm(ok, 100*tol_init)")
+        content.append("")
+        content.append("    # Get the base shear force")
         content.append("    ops.reactions()")
         content.append("    current_disp = ops.nodeDisp(ctrl_node, ctrl_dof)")
         content.append("    current_shear = abs(sum([ops.nodeReaction(node, "
                        "ctrl_dof) for node in supports]))")
+        content.append("    # Set continue flag")
         content.append("    cont = current_disp < max_disp and current_shear <"
                        " 50000 and current_shear >= 0.2*max(base_shear)")
+        content.append("    # Append base shear and control node displacement")
         content.append("    if ok == 0 and cont:")
         content.append("        base_shear.append(current_shear)")
         content.append("        ctrl_disp.append(current_disp)")
         # Add lines for wiping the model
         content.append("")
+        content.append("# Wipe the model")
         content.append("ops.wipe()")
         # Add lines for return statement
+        content.append(
+            "# Return base shear and control node displacement history"
+        )
         content.append("return ctrl_disp, base_shear")
         content.append("")
         # Add white spaces for method content
@@ -1318,9 +1412,11 @@ class FIM:
                    else item
                    for item in content]
         # Add method definition
-        method = [f"def do_nspa_{direction}(max_disp: float = {max_disp:.2f}, "
-                  f"num_steps: int = {self.num_steps}) "
-                  "-> tuple[list[float], list[float]]:"]
+        method = [
+            f"def do_nspa_{direction}(max_drift: float = {self.max_drift}, "
+            f"dincr: float = {self.dincr}) "
+            "-> tuple[list[float], list[float]]:"
+            ]
         content = method + content
 
         return content
@@ -1341,8 +1437,13 @@ class FIM:
             "----------",
             "ok : int",
             "    Result of the last analysis step in OpenSees.",
-            "test_tol : float",
-            "    Test tolerance considered in the next analysis step.",
+            "tol : float",
+            "    The tolerance criteria used to check for convergence.",
+            "iter : int, optional",
+            "    The max number of iterations to check before returning "
+            "failure.",
+            "    By default 100."
+            "",
             "Return",
             "------",
             "int",
@@ -1350,26 +1451,29 @@ class FIM:
             '"""'
         ]
         # Add lines for setting nspa algorithm
+        content.append("# Try KrylovNewton")
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', test_tol, 10)")
+        content.append("    ops.test('NormDispIncr', tol, iter)")
+        content.append("    ops.algorithm('KrylovNewton')")
+        content.append("    ok = ops.analyze(1)")
+        content.append("# Try NewtonLineSearch algorithm")
+        content.append("if ok != 0:")
+        content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('NewtonLineSearch', 0.1)")
         content.append("    ok = ops.analyze(1)")
-        content.append("")
+        content.append("# Try Broyden algorithm")
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', test_tol, 10)")
+        content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('Broyden', 50)")
         content.append("    ok = ops.analyze(1)")
-        content.append("")
+        content.append(
+            "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm"
+            )
         content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', test_tol, 10)")
-        content.append("    ops.algorithm('ModifiedNewton', 50)")
-        content.append("    ok = ops.analyze(1)")
-        content.append("")
-        content.append("if ok != 0:")
-        content.append("    ops.test('NormDispIncr', test_tol, 10)")
+        content.append("    ops.test('NormDispIncr', tol, iter)")
         content.append("    ops.algorithm('BFGS')")
         content.append("    ok = ops.analyze(1)")
-        content.append("")
+        content.append("# Return the analysis result")
         # Add lines for setting return statement
         content.append("return ok")
         content.append("")
@@ -1378,7 +1482,9 @@ class FIM:
                    else item
                    for item in content]
         # Add method definition
-        method = ["def _set_algorithm(ok: int, test_tol: float) -> None:"]
+        method = [
+            "def _set_algorithm(ok: int, tol: float, iter: int = 100) -> None:"
+            ]
         content = method + content
 
         return content
@@ -1697,7 +1803,7 @@ class FIM:
             List of lines representing do_nspa_{direction} procedure.
         """
         # Get NSPA loading parameters
-        nodes, loads, ctrl_node, max_disp = \
+        nodes, loads, ctrl_node = \
             self.__get_nspa_loading_parameters(ctrl_dof)
         # Set support nodes
         supports = ' '.join([
@@ -1718,12 +1824,13 @@ class FIM:
             "#",
             "# Parameters",
             "# ----------",
-            "# max_disp : float, optional.",
-            "#    Maximum considered displacement for control node.",
-            f"#    By default {max_disp:.2f}",
-            "# num_steps : float, optional.",
-            "#    Number of analysis steps considered in pushover analysis.",
-            f"#    By default {self.num_steps}.",
+            "# max_drift : float, optional.",
+            "#    Maximum considered drift value for the control node.",
+            f"#    By default {self.max_drift}",
+            "# dincr : float, optional.",
+            "#    First displacement increment considered during the "
+            "analysis.",
+            f"#    By default {self.dincr}.",
             "#",
             "# Return",
             "# ------",
@@ -1773,25 +1880,39 @@ class FIM:
                        "{*}$supports -dof $ctrl_dof reaction")
         # Add lines for saving storey heights
         content.append("")
+        content.append("# Base level coordinate")
+        content.append("set base_level 1.0e12")
+        content.append("foreach node $supports {")
+        content.append("    set zCoord [nodeCoord $node 3]")
+        content.append("    if {$zCoord < $base_level} {")
+        content.append("        set base_level $zCoord")
+        content.append("    }")
+        content.append("}")
         content.append("# Save storey heights")
         content.append('set file [open $storey_heights_file_path "w"]')
         content.append("foreach node $floors {")
-        content.append("    puts $file [lindex [nodeCoord $node] 2]")
+        content.append(
+            "    puts $file [expr {[nodeCoord $node 3] - $base_level}]"
+            )
         content.append("}")
         content.append("close $file")
         # Add lines for setting the analysis parameters
         content.append("")
         content.append("# Set analysis parameters")
-        content.append("set dincr [expr $max_disp / $num_steps]")
-        content.append("set test_tolerance 1.0e-6")
+        content.append(
+            "set max_disp "
+            "[expr {$max_drift * [nodeCoord $ctrl_node 3] - $base_level}]"
+            )
+        content.append("set tol_init 1.0e-6")
+        content.append("set iter_init 20")
         content.append("wipeAnalysis")
         content.append("system UmfPack")
         content.append("numberer RCM")
         content.append("constraints Penalty 1.0e12 1.0e12")
-        content.append("test NormDispIncr $test_tolerance 30 0")
+        content.append("test NormDispIncr $tol_init $iter_init")
         content.append("integrator DisplacementControl $ctrl_node $ctrl_dof "
                        "$dincr")
-        content.append("algorithm KrylovNewton")
+        content.append("algorithm Newton")
         content.append("analysis Static")
         # Add lines for performing the analysis
         content.append("")
@@ -1802,29 +1923,39 @@ class FIM:
         content.append("set base_shear [list 0.0]")
         content.append("set ctrl_disp [list 0.0]")
         content.append("while { $ok == 0 && $cont == 1 } {")
-        content.append("    test NormDispIncr $test_tolerance 30 0")
+        content.append("    test NormDispIncr $tol_init $iter_init")
         content.append("    integrator DisplacementControl $ctrl_node "
                        "$ctrl_dof $dincr")
+        content.append("    algorithm Newton")
         content.append("    set ok [analyze 1]")
+        content.append("    # try other algorithms")
         content.append("    if { $ok != 0 } {")
-        content.append("        set ok [_set_algorithm $ok $test_tolerance]")
+        content.append("        set ok [_set_algorithm $ok $tol_init]")
         content.append("    }")
+        content.append("    # reduce dincr to an half")
         content.append("    if { $ok != 0 } {")
         content.append("        integrator DisplacementControl $ctrl_node "
                        "$ctrl_dof [expr 0.5 * $dincr]")
-        content.append("        set ok [_set_algorithm $ok $test_tolerance]")
+        content.append("        set ok [_set_algorithm $ok $tol_init]")
         content.append("    }")
-        content.append("    if { $ok != 0 } {")
-        content.append("        set ok [_set_algorithm $ok "
-                       "[expr 10 * $test_tolerance]]")
-        content.append("    }")
+        content.append("    # reduce dincr to a quarter")
         content.append("    if { $ok != 0 } {")
         content.append("        integrator DisplacementControl $ctrl_node "
-                       "$ctrl_dof [expr 0.5 * $dincr]")
+                       "$ctrl_dof [expr 0.25 * $dincr]")
+        content.append("        set ok [_set_algorithm $ok $tol_init]")
+        content.append("    }")
+        content.append("    # increase tolerance by factor of 10")
+        content.append("    if { $ok != 0 } {")
         content.append("        set ok [_set_algorithm $ok "
-                       "[expr 10 * $test_tolerance]]")
+                       "[expr 10 * $tol_init]]")
+        content.append("    }")
+        content.append("    # increase tolerance by factor of 100")
+        content.append("    if { $ok != 0 } {")
+        content.append("        set ok [_set_algorithm $ok "
+                       "[expr 100 * $tol_init]]")
         content.append("    }")
         content.append("")
+        content.append("    # Get the base shear force")
         content.append("    reactions")
         content.append("    set current_disp [nodeDisp $ctrl_node $ctrl_dof]")
         content.append("    set current_shear 0")
@@ -1834,16 +1965,18 @@ class FIM:
         content.append(
             "        set current_shear [expr $current_shear + abs($reaction)]")
         content.append("    }")
-        # Calculate the maximum shear value encountered so far
+        content.append("    # Calculate the maximum encountered shear value")
         content.append(
             "    "
             "set max_base_shear [expr {max($max_base_shear, $current_shear)}]"
             )
+        content.append("    # Set continue flag")
         content.append(
             "    "
             "set cont [expr {($current_disp < $max_disp) && "
             "($current_shear < 50000) && "
             "($current_shear >= 0.2 * $max_base_shear)}]")
+        content.append("    # Append base shear and control node displacement")
         content.append("    if { $ok == 0 && $cont == 1 } {")
         content.append("        lappend base_shear $current_shear")
         content.append("        lappend ctrl_disp $current_disp")
@@ -1851,17 +1984,20 @@ class FIM:
         content.append("}")
         # Add lines for wiping the model
         content.append("")
+        content.append("# Wipe the model")
         content.append("wipe")
         # Add lines for return statement
-        content.append("")
+        content.append(
+            "# Return base shear and control node displacement history"
+        )
         content.append("return [list $ctrl_disp $base_shear]")
         # Add white spaces for method content
         content = ['    ' + item if item
                    else item
                    for item in content]
         # Add method definition
-        var1 = "{ num_steps " + f"{self.num_steps}" + " }"
-        var2 = "{ max_disp " + f"{max_disp}" + " }"
+        var1 = "{ max_drift " + f"{self.max_drift}" + " }"
+        var2 = "{ dincr " + f"{self.dincr}" + " }"
         method = [f"proc do_nspa_{direction}" + " { " +
                   f"{var1} {var2}" + " }" + " { "]
         content = method + content
@@ -1887,38 +2023,43 @@ class FIM:
             "# ----------",
             "# ok : int",
             "#     Result of the last analysis step in OpenSees.",
-            "# test_tol : float",
-            "#     Test tolerance considered in the next analysis step.",
+            "# tol : float",
+            "#     The tolerance criteria used to check for convergence.",
+            "# iter : float",
+            "#     The max number of iterations to check before returning "
+            "failure.",
+            "#     By default 100.",
             "#",
             "# Return",
             "# ------",
             "# int",
             "#     Result of the new analysis step in OpenSees.",
             "",
+            "# Try KrylovNewton",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $test_tol 10",
+            "    test NormDispIncr $tol $iter",
+            "    algorithm KrylovNewton",
+            "    set ok [analyze 1]",
+            "}",
+            "# Try NewtonLineSearch algorithm",
+            "if { $ok != 0 } {",
+            "    test NormDispIncr $tol $iter",
             "    algorithm NewtonLineSearch 0.1",
             "    set ok [analyze 1]",
             "}",
-            "",
+            "# Try Broyden algorithm",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $test_tol 10",
+            "    test NormDispIncr $tol 10",
             "    algorithm Broyden 50",
             "    set ok [analyze 1]",
             "}",
-            "",
+            "# Try Broyden-Fletcher-Goldfarb-Shanno (BFGS) algorithm",
             "if { $ok != 0 } {",
-            "    test NormDispIncr $test_tol 10",
-            "    algorithm ModifiedNewton 50",
-            "    set ok [analyze 1]",
-            "}",
-            "",
-            "if { $ok != 0 } {",
-            "    test NormDispIncr $test_tol 10",
+            "    test NormDispIncr $tol 10",
             "    algorithm BFGS",
             "    set ok [analyze 1]",
             "}",
-            "",
+            "# Return the analysis result",
             "return $ok"
         ]
         # Add white spaces for method content
@@ -1926,7 +2067,7 @@ class FIM:
                    else item
                    for item in content]
         # Add method definition
-        method = ["proc _set_algorithm {ok test_tol} {"]
+        method = ["proc _set_algorithm { ok tol {iter 100} } {"]
         content = method + content
         # Add method closure bracket
         content = content + ["}", ""]
@@ -1974,3 +2115,65 @@ class FIM:
         ]
 
         return content
+
+    def plot_model(self, show_nodes: Literal['no', 'yes'] = 'yes',
+                   line_width: float = 3) -> None:
+        """
+        Plots the structural model, showing nodes and elements grouped by type
+        (rigid elements, beams, and columns).
+
+        Parameters
+        ----------
+        show_nodes : Literal['no', 'yes'], optional
+            A flag to control whether to display the nodes in the plot.
+            'yes' to show the nodes, 'no' to hide them. By default 'yes'.
+        line_width : float, optional
+            Specifies the line width used to draw the elements in the plot.
+            By default 3.
+        """
+        # Set the group elements
+        rigid = []
+        for joint in self.floor_joints:
+            rigid.extend(joint.rigid_ele)
+        for joint in self.stairs_joints:
+            rigid.extend(joint.rigid_ele)
+        beams = [beam.design.line.tag for beam in self.beams]
+        columns = [column.design.line.tag for column in self.columns]
+        groups = [
+            [rigid, beams, columns],
+            ["black", "red", "blue"]
+        ]
+        # Build the model
+        self.build()
+        # Plot the model
+        vfo.plot_model(show_nodes=show_nodes, elementgroups=groups,
+                       line_width=line_width)
+
+    def plot_modeshape(
+        self, modenumber: int = 1, scale: float = 100, line_width: float = 3,
+        contour: Optional[Literal['x', 'y', 'z']] = None
+    ) -> None:
+        """
+        Plots the mode shape of the structure for a given mode number,
+        scaled for visual clarity.
+
+        Parameters
+        ----------
+        modenumber : int, optional
+            Specifies the mode number to be plotted.
+            By default 1.
+        scale : float, optional
+            A scaling factor to exaggerate the mode shape for better
+            visualization. By default 100.
+        line_width : float, optional
+            Specifies the line width used to draw the mode shape.
+            By default 3.
+        contour : Literal['x', 'y', 'z'] | None, optional
+            Contours of displacement in x, y, or z.
+            By default None.
+        """
+        # Build the model
+        self.build()
+        # Plot the mode shape
+        vfo.plot_modeshape(modenumber=modenumber, scale=scale,
+                           line_width=line_width, contour=contour)

@@ -51,6 +51,8 @@ class StairsJoint:
     """The bottom joint node at offset distance along z-axis."""
     top_node: Node | None
     """The top joint node at offset distance along z-axis."""
+    rigid_ele: List[int]
+    """Tags of the rigid-like elements."""
 
     def __init__(self, design: JointBase, mass: float) -> None:
         """Initialize StairsJoint object.
@@ -62,6 +64,8 @@ class StairsJoint:
         mass : float
             Total mass assigned to joint.
         """
+        # Store rigid-like element tags
+        self.rigid_ele = []
         # Save reference design information of joint
         self.design = design
         # Set reference node properties
@@ -180,24 +184,28 @@ class StairsJoint:
             ele_tag = self.left_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_X)
+            self.rigid_ele.append(ele_tag)
         if self.right_node:
             self.right_node.add_to_ops()
             ele_nodes = [self.center_node.tag, self.right_node.tag]
             ele_tag = self.right_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_X)
+            self.rigid_ele.append(ele_tag)
         if self.bottom_node:
             self.bottom_node.add_to_ops()
             ele_nodes = [self.bottom_node.tag, self.center_node.tag]
             ele_tag = self.bottom_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Z)
+            self.rigid_ele.append(ele_tag)
         if self.top_node:
             self.top_node.add_to_ops()
             ele_nodes = [self.center_node.tag, self.top_node.tag]
             ele_tag = self.top_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Z)
+            self.rigid_ele.append(ele_tag)
 
     def to_py(self) -> List[str]:
         """Gets the Python commands to define stairs joint model objects in
@@ -392,12 +400,14 @@ class FloorJoint(StairsJoint):
             ele_tag = self.rear_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Y)
+            self.rigid_ele.append(ele_tag)
         if self.front_node:
             self.front_node.add_to_ops()
             ele_nodes = [self.center_node.tag, self.front_node.tag]
             ele_tag = self.front_node.tag
             ops.element('elasticBeamColumn', ele_tag, *ele_nodes,
                         RIGID_SEC, LINEAR_TRANSF_Y)
+            self.rigid_ele.append(ele_tag)
 
         # Joint flexibility element
         ele_nodes = [self.center_node.tag, self.floor_node.tag]
