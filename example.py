@@ -73,7 +73,7 @@ for design_class in design_classes:
     dy, vy = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
     plt.plot(dx, vx, label='X-dir')
     plt.plot(dy, vy, label='Y-dir')
-    plt.xlabel("Displacement of control node[m]")
+    plt.xlabel("Displacement of control node [m]")
     plt.ylabel("Base Shear [kN]")
     plt.legend()
     plt.savefig(outdir_building / "nspa.png", dpi=300)
