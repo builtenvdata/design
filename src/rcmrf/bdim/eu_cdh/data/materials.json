@@ -1,0 +1,14 @@
+{
+    "concrete" :
+    [
+        {"grade": "C20", "fck": 20, "fck_cube": 25},
+        {"grade": "C25", "fck": 25, "fck_cube": 30},
+        {"grade": "C30", "fck": 30, "fck_cube": 35},
+        {"grade": "C35", "fck": 35, "fck_cube": 40}
+    ],
+    "steel" :
+    [
+        {"grade": "S400", "fsyk": 400},
+        {"grade": "S500", "fsyk": 500}
+    ]
+}
