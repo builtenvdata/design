@@ -1,31 +1,31 @@
 """
-Specific routines for defining and designing tr_post18 buildings.
+Specific routines for defining and designing tr_0018 buildings.
 
 Basic units are kN, m, sec
 
 NOTES
 -----
-1- The method named "_set_column_capacity_design_moments" overwritten
-since TBEC-2018 enforces to not consider roof level columns in terms
-of capacity design principles.
-2- The method named "_set_column_capacity_design_shear_forces" overwritten
-to calculate column capacity shear forces using beam capacity moments, except
-for ground floor columns, which are treated as in TBEC-2018. Column capacity
-shear forces are also adjusted with the overstrength value of 3 , which is the
-case for RCMRF buildings with high ductility in case of DTS1 and DTS2.
-3- The method named "_set_beam_capacity_design_shear_forces" overwritten since
-the rules are different in TBEC-2018 compared to EN 1998-1:2004. Beam capacity
-shear forces are also adjusted with the overstrength value of 3 , which is the
-case for RCMRF buildings with high ductility in case of DTS1 and DTS2.
-4- The method named "_predesign" overwritten to add slab type as an input for
-predesign_section_dimension method of beams.
+1- The method named "_set_column_capacity_design_moments" has been
+overwritten because TBEC-1998 and TBEC-2007 enforce not considering
+roof-level columns in terms of capacity design principles.
+
+2- The method named "_set_column_capacity_design_shear_forces" has been
+overwritten to calculate column capacity shear forces using beam capacity
+moments, except for ground floor columns, which are treated as specified
+in TBEC-1998 and TBEC-2007.
+
+3- The method named "_set_beam_capacity_design_shear_forces" has been
+overwritten since the rules in TBEC-1998 and TBEC-2007 differ from those
+in EN 1998-1:2004.
+
+4- The method named "_predesign" has been overwritten to add slab type
+as an input for the "predesign_section_dimension" method of beams.
 """
 
 # Imports from installed packages
 from typing import List, Type, Tuple
-import numpy as np
 
-# Imports from the design class (tr_post18) library
+# Imports from the design class (tr_0018) library
 from .analysis import ElasticModel
 from .beam import Beam
 from .column import Column
@@ -45,7 +45,7 @@ from ....utils.units import m
 
 
 class Building(BuildingBase):
-    """Building object for design class: tr_post18."""
+    """Building object for design class: tr_0018."""
 
     beams: List[Beam]
     """List of beam instances."""
@@ -170,7 +170,8 @@ class Building(BuildingBase):
 
         Reference
         ---------
-        Section 7.3.5 in TBEC-2018
+        Section 7.3.5 in TBEC-1998
+        Section 3.3.5 in TBEC-2007
         """
         if self.OVERSTRENGTH_FACTOR_COLUMN_MOMENT is None:  # Do not add
             return
@@ -206,14 +207,13 @@ class Building(BuildingBase):
                 # Both top and bottom columns exist
                 if joint.top_column and joint.bottom_column:
                     forces_top = (
-                        factors["G"] * joint.top_column.forces["G/seismic"]
-                        + factors["Q"] * joint.top_column.forces["Q/seismic"]
+                        factors["G"]*joint.top_column.forces["G/seismic"]
+                        + factors["Q"]*joint.top_column.forces["Q/seismic"]
                     )
                     forces_bottom = (
-                        factors["G"] * joint.bottom_column.forces["G/seismic"]
-                        + factors["Q"] *
-                        joint.bottom_column.forces["Q/seismic"]
-                    )
+                        factors["G"]*joint.bottom_column.forces["G/seismic"] +
+                        factors["Q"]*joint.bottom_column.forces["Q/seismic"]
+                        )
                     forces_top.Mx1 = 0.5 * gamma_rd * sum_mrdb_y
                     forces_top.My1 = 0.5 * gamma_rd * sum_mrdb_x
                     forces_top.case = "capacity"
@@ -239,7 +239,8 @@ class Building(BuildingBase):
 
         Reference
         ---------
-        Section-7.3.7 in TBEC-2018
+        Section 7.3.7 in TBEC-1998
+        Section 3.3.7 in TBEC-2007
         """
 
         def get_sum_mrdb_at_joint(joint: JointBase) -> Tuple[float, float]:
@@ -274,8 +275,8 @@ class Building(BuildingBase):
                 sum_mrdb_y_pos += joint.front_beam.neg_Mrd[0]
                 sum_mrdb_y_neg += joint.front_beam.pos_Mrd[0]
 
-            return (sum_mrdb_x_pos, sum_mrdb_x_neg, sum_mrdb_y_pos,
-                    sum_mrdb_y_neg)
+            return (sum_mrdb_x_pos, sum_mrdb_x_neg,
+                    sum_mrdb_y_pos, sum_mrdb_y_neg)
 
         def get_column_clear_length() -> Tuple[float, float]:
             """Gets column clear length (distance between column faces).
@@ -358,30 +359,31 @@ class Building(BuildingBase):
                 ) = get_sum_mrdb_at_joint(joint_j)
 
                 # Moment distribution ratios for in line columns (Selected
-                # seismic combos (10,15) are belongs to seismic combos
-                # in x and y directions)
-                ratio_x_top = abs(joint_j.bottom_column.design_forces[16].
-                                  Mx9) / (abs(joint_j.bottom_column.
-                                              design_forces[16].Mx9) +
-                                          abs(joint_j.top_column.
-                                              design_forces[16].Mx1))
-                ratio_y_top = abs(joint_j.bottom_column.design_forces[11].
-                                  My9) / (abs(joint_j.bottom_column.
-                                              design_forces[11].My9) +
-                                          abs(joint_j.top_column.
-                                              design_forces[11].My1))
-                ratio_x_bot = abs(joint_i.top_column.design_forces[16].
-                                  Mx1) / (abs(joint_i.top_column.
-                                              design_forces[16].Mx1) +
-                                          abs(joint_i.bottom_column.
-                                              design_forces[16].Mx9))
-                ratio_y_bot = abs(joint_i.top_column.design_forces[11].
-                                  My1) / (abs(joint_i.top_column.
-                                              design_forces[11].My1) +
-                                          abs(joint_i.bottom_column.
-                                              design_forces[11].My9))
+                # combos (6,8) are belongs to seismic combos in x and y
+                # directions)
+                ratio_x_top = abs(
+                    joint_j.bottom_column.design_forces[8].Mx9) / (
+                    abs(joint_j.bottom_column.design_forces[8].Mx9) +
+                    abs(joint_j.top_column.design_forces[8].Mx1)
+                )
+                ratio_y_top = abs(
+                    joint_j.bottom_column.design_forces[6].My9) / (
+                        abs(joint_j.bottom_column.design_forces[6].My9) +
+                        abs(joint_j.top_column.design_forces[6].My1)
+                )
+                ratio_x_bot = abs(
+                    joint_i.top_column.design_forces[8].Mx1) / (
+                    abs(joint_i.top_column.design_forces[8].Mx1) +
+                    abs(joint_i.bottom_column.design_forces[8].Mx9)
+                )
+                ratio_y_bot = abs(
+                    joint_i.top_column.design_forces[6].My1) / (
+                    abs(joint_i.top_column.design_forces[6].My1) +
+                    abs(joint_i.bottom_column.design_forces[6].My9)
+                )
 
-                # Column plastic moments to be used for shear capacity forces
+                # Column plastic moments to be used for shear capacity forces,
+                # Ref.: Section-7.3.7 in TBEC-1998, Section-3.3.7 in TBEC-2007
                 Mpi_x_pos = gamma_rd * ratio_x_bot * sum_mrdb_y_pos_i
                 Mpi_x_neg = gamma_rd * ratio_x_bot * sum_mrdb_y_neg_i
                 Mpj_x_pos = gamma_rd * ratio_x_top * sum_mrdb_y_pos_j
@@ -397,38 +399,17 @@ class Building(BuildingBase):
                 Vdy_pos = (Mpi_x_pos + Mpj_x_neg) / col_lcy
                 Vdy_neg = (Mpi_x_neg + Mpj_x_pos) / col_lcy
 
-                # Set the capacity design shear forces
-                Vcap_x = max(Vdx_pos, Vdx_neg)
-                Vcap_y = max(Vdy_pos, Vdy_neg)
+                # Set the design shear forces
+                Vd_x = max(column.envelope_forces.Vx1,
+                           column.envelope_forces.Vx9)
+                Vd_y = max(column.envelope_forces.Vy1,
+                           column.envelope_forces.Vy9)
 
-                # Modify capacity shear forces with overstrength adjusted
-                # shear forces
-                Vd_x_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vx1,
-                    column.envelope_forces_overstrength_adjusted.Vx9,
-                )
-                Vd_y_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vy1,
-                    column.envelope_forces_overstrength_adjusted.Vy9,
-                )
-                Vcap_x = min(Vcap_x, Vd_x_oa)
-                Vcap_y = min(Vcap_y, Vd_y_oa)
+                column.Ve_x = max(Vdx_pos, Vdx_neg, Vd_x)
+                column.Ve_y = max(Vdy_pos, Vdy_neg, Vd_y)
 
-                # Modify capacity shear forces with envelope shear forces
-                Vd_x = max(column.envelope_forces.Vx1, column.
-                           envelope_forces.Vx9)
-                Vd_y = max(column.envelope_forces.Vy1, column.
-                           envelope_forces.Vy9)
-                Vcap_x = max(Vcap_x, Vd_x)
-                Vcap_y = max(Vcap_y, Vd_y)
-
-                # Set the design shear values
-                column.Ve_x = Vcap_x
-                column.Ve_y = Vcap_y
-
-            elif (
-                joint_j.top_column and joint_j.bottom_column
-            ):  # Ground storey column case
+            elif (joint_j.top_column and
+                  joint_j.bottom_column):  # Ground storey column case
                 # Unique gravity load factors from seismic load combinations
                 comb_grav_factors = self._get_unique_seism_combo_grav_factors()
                 Vcap_x = 0
@@ -443,8 +424,8 @@ class Building(BuildingBase):
                     mrdx_i = column.get_mrdx(Ned=forces.N1)
                     mrdy_i = column.get_mrdy(Ned=forces.N1)
 
-                    # Column plastic moments at i joint, Equation 7.3.7.4
-                    # in TBEC-2018
+                    # Column plastic moments at joint i, Eq. 7.3.7.4
+                    # in TBEC-1998 and Eq. 3.3.7.4 in TBEC-2007
                     Mpi_x_pos = gamma_rd * mrdx_i
                     Mpi_x_neg = gamma_rd * mrdx_i
                     Mpi_y_pos = gamma_rd * mrdy_i
@@ -459,21 +440,20 @@ class Building(BuildingBase):
                     ) = get_sum_mrdb_at_joint(joint_j)
 
                     # Moment distribution ratios for in line columns (Selected
-                    # seismic combos (10,15) are belongs to seismic combos
-                    # in x and y directions)
-                    ratio_x_top = abs(joint_j.bottom_column.design_forces[16].
-                                      Mx9) / (abs(joint_j.bottom_column.
-                                                  design_forces[16].Mx9) +
-                                              abs(joint_j.top_column.
-                                                  design_forces[16].Mx1))
-                    ratio_y_top = abs(joint_j.bottom_column.design_forces[11].
-                                      My9) / (abs(joint_j.bottom_column.
-                                                  design_forces[11].My9) +
-                                              abs(joint_j.top_column.
-                                                  design_forces[11].My1))
+                    # combos (6,8) are belongs to seismic combos in x and y
+                    # directions)
+                    ratio_x_top = abs(
+                        joint_j.bottom_column.design_forces[8].Mx9) / (
+                            abs(joint_j.bottom_column.design_forces[8].Mx9) +
+                            abs(joint_j.top_column.design_forces[8].Mx1))
+                    ratio_y_top = abs(
+                        joint_j.bottom_column.design_forces[6].My9) / (
+                            abs(joint_j.bottom_column.design_forces[6].My9) +
+                            abs(joint_j.top_column.design_forces[6].My1))
 
-                    # Column plastic moments at joint j to be used for shear
-                    # capacity forces
+                    # Column plastic moments at j joint to be used for shear
+                    # capacity forces, Reference: Section-7.3.7 in TBEC-1998
+                    # and Section-3.3.7 in TBEC-2007
                     Mpj_x_pos = gamma_rd * ratio_x_top * sum_mrdb_y_pos_j
                     Mpj_x_neg = gamma_rd * ratio_x_top * sum_mrdb_y_neg_j
                     Mpj_y_pos = gamma_rd * ratio_y_top * sum_mrdb_x_pos_j
@@ -488,30 +468,13 @@ class Building(BuildingBase):
                     Vcap_x = max(Vcap_x, Vdx_pos, Vdx_neg)
                     Vcap_y = max(Vcap_y, Vdy_pos, Vdy_neg)
 
-                # Modify capacity shear forces with overstrength adjusted
-                # shear forces
-                Vd_x_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vx1,
-                    column.envelope_forces_overstrength_adjusted.Vx9,
-                )
-                Vd_y_oa = max(
-                    column.envelope_forces_overstrength_adjusted.Vy1,
-                    column.envelope_forces_overstrength_adjusted.Vy9,
-                )
-                Vcap_x = min(Vcap_x, Vd_x_oa)
-                Vcap_y = min(Vcap_y, Vd_y_oa)
-
-                # Modify capacity shear forces with envelope shear forces
+                # Set the design shear forces
                 Vd_x = max(column.envelope_forces.Vx1,
                            column.envelope_forces.Vx9)
                 Vd_y = max(column.envelope_forces.Vy1,
                            column.envelope_forces.Vy9)
-                Vcap_x = max(Vcap_x, Vd_x)
-                Vcap_y = max(Vcap_y, Vd_y)
-
-                # Set the design shear values
-                column.Ve_x = Vcap_x
-                column.Ve_y = Vcap_y
+                column.Ve_x = max(Vcap_x, Vd_x)
+                column.Ve_y = max(Vcap_y, Vd_y)
             else:
                 pass
 
@@ -521,7 +484,8 @@ class Building(BuildingBase):
 
         Reference
         ---------
-        Section 7.4.5 in TBEC-2018
+        Section 7.4.5 in TBEC-1998
+        Section 3.4.5 in TBEC-2007
         """
 
         def get_beam_clear_length() -> float:
@@ -598,16 +562,6 @@ class Building(BuildingBase):
             Ved_i_neg = Vdy_i - (Mpi_neg + Mpj_pos) / beam_lc
             Ved_j_pos = Vdy_j + (Mpj_pos + Mpi_neg) / beam_lc
             Ved_j_neg = Vdy_j - (Mpj_neg + Mpi_pos) / beam_lc
-            Ve1 = max(Ved_i_pos, abs(Ved_i_neg))
-            Ve9 = max(Ved_j_pos, abs(Ved_j_neg))
 
-            # Modify capacity shear forces with overstrength adjusted
-            # shear forces
-            Ve1 = np.minimum(Ve1,
-                             beam.envelope_forces_overstrength_adjusted.V1)
-            Ve9 = np.minimum(Ve9,
-                             beam.envelope_forces_overstrength_adjusted.V9)
-
-            # Set the design shear forces
-            beam.Ve1 = Ve1
-            beam.Ve9 = Ve9
+            beam.Ve1 = max(Ved_i_pos, abs(Ved_i_neg))
+            beam.Ve9 = max(Ved_j_pos, abs(Ved_j_neg))

@@ -45,8 +45,8 @@
     },
   "slab_properties":
     {
-      "one_to_one_and_comp_ratio": 0.50,
-      "two_to_two_and_comp_ratio": 0.65,
+      "one_to_one_and_comp_ratio": 1.0, 
+      "two_to_two_and_comp_ratio": 1.0,
       "max_solid_length": 6.0,
       "max_thickness": 0.85,
       "staircase_slab_depth": 0.15

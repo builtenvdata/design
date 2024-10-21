@@ -298,7 +298,7 @@ class BCIM:
         2: Moderate quality.
         3: Low quality.
     building_geometry: List[StandardFrame]
-        List of bilding geometry instances.
+        List of building geometry instances.
     floor_width_x: List[float]
         Total floor width in x direction in floor layout.
     floor_width_y: List[float]
@@ -519,7 +519,7 @@ class BCIM:
                             defaults_sub[subkey] = inputs_sub[subkey]
                 else:
                     defaults[key] = inputs[key]
-        # Store the updated input parameteters
+        # Store the updated input parameters
         self.inputs = InputData(**defaults)
         # Add all floor layout names
         if self.inputs.layout == "all":

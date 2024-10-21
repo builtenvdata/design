@@ -13,10 +13,10 @@ from ..baselib.column import ColumnForces
 """
 Notes
 -----
-1- Cracked stiffness is considered in design after 2018.
-2- The method named "analyze_for_all" overwritten here to include the
-overstrength value of 3, which is the case for RCMRF buildings with
-high ductility in case of DTS1 and DTS2.
+1- Cracked stiffness has been considered in design since 2018.
+2- The method named "analyze_for_all" has been overwritten here
+to include an overstrength factor of 3, which is the value for
+RCMRF buildings with high ductility in the case of DTS1 and DTS2.
 """
 
 

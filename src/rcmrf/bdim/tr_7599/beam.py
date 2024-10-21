@@ -1,5 +1,5 @@
 """
-Specific routines for defining and designing tr_post18 beams.
+Specific routines for defining and designing tr_7599 beams.
 
 Notes
 -----
@@ -7,23 +7,24 @@ Design based on limit state design.
 
 References
 ----------
-TBEC-2018(TR)-Turkish Building Earthquake Code
-TS500-2000(TR)-Design and Construction Rules for Reinforced Concrete Buildings
+TBEC-1975(TR)-Specification for Structures to be Built in Disaster Areas
+TS500-1975(TR)-Design and Construction Rules for Reinfoced Concrete Buildings
+TS500-1984(TR)-Design and Construction Rules for Reinfoced Concrete Buildings
 """
 
 # Imports from installed packages
 from math import ceil
 import numpy as np
-from typing import List, Tuple
+from typing import Tuple
 
-# Imports from the design class (tr_post18) library
+# Imports from the design class (tr_7599) library
 from .materials import Steel, Concrete
 
 # Imports from bdim base library
-from ..baselib.beam import BeamBase, BeamForces, BeamEnvelopeForces, Array3
+from ..baselib.beam import BeamBase, Array3
 
 # Imports from units library
-from ....utils.units import MPa, m, mm
+from ....utils.units import MPa, m
 
 # Constants
 ECONOMIC_MU_EB: float = 0.25
@@ -35,77 +36,23 @@ EPS_CU = 0.003
 
 
 class Beam(BeamBase):
-    """Beam object for design class: tr_post18."""
+    """Beam object for design class: tr_7599."""
 
     steel: Steel
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
-    MIN_B_EB: float = 0.25 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-2018"""
+    MIN_B_EB: float = 0.20 * m
+    """The default minimum breadth (width) of emergent beams."""
     MIN_H_EB: float = 0.30 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-2018"""
-    design_forces_overstrength_adjusted: List[BeamForces]
-    """List of forces obtained each load combination (design forces)."""
-    Ve1: float = 0.0
-    """Beam capacity design shear force at 1st gaussian point"""
-    Ve9: float = 0.0
-    """Beam capacity design shear force at 9st gaussian point"""
-
-    @property
-    def max_b(self) -> float:
-        """
-        Reference
-        ---------
-        Section 7.4.1 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Computed maximum allowed section breadth (width).
-        """
-        if self.direction == "x":  # Beam is along x
-            bc = max(col.by for col in self.columns if col)
-        elif self.direction == "y":  # Beam is along y
-            bc = max(col.bx for col in self.columns if col)
-        b_max_code = bc + self.h
-        # Masks for finding emergent beams
-        bool1 = self.typology == 2
-        bool2 = self.exterior
-        bool3 = self.stairs_wg != 0.0
-        if bool1 or bool2 or bool3:
-            return min(b_max_code, self.MAX_B_EB)
-        else:
-            return min(b_max_code, self.MAX_B_WB)
-
-    @property
-    def max_h(self) -> float:
-        """
-        Reference
-        ---------
-        Section 7.4.1 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Computed maximum allowed section height (depth).
-        """
-        # Masks for finding emergent beams
-        bool1 = self.typology == 2  # Emergent by default
-        bool2 = self.exterior  # Forces exterior beams to emergent
-        bool3 = self.stairs_wg != 0.0  # Forces stairs beams to be emergent
-        h_max_code = 3.5 * self.b
-        if bool1 or bool2 or bool3:
-            return min(self.MAX_H_EB, h_max_code)
-        else:
-            return min(self.MAX_H_WB, h_max_code)
+    """The default minimum breadth (width) of emergent beams."""
 
     @property
     def fctk(self) -> float:
         """
         Reference
         ----------
-        Equation 3.1 in T5500-2000
+        Section 3.3.2 in T5500-1984
 
         Returns
         -------
@@ -125,116 +72,37 @@ class Beam(BeamBase):
         return self.fctk / self.concrete.PARTIAL_FACTOR
 
     @property
-    def Iy_eff(self) -> float:
-        """
-        Reference
-        ----------
-        Table 4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Moment of inertia around y-axis of the beam.
-        """
-        return 0.35 * self.Iy
-
-    @property
-    def Ix_eff(self) -> float:
-        """
-        Reference
-        ----------
-        Table 4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Moment of inertia around x-axis of the beam.
-        """
-        return 0.35 * self.Ix
-
-    @property
     def rhol_min_tens(self) -> float:
         """
         Reference
         ----------
-        Equation 7.8 in TBEC-2018
+        # Section 6.9 in TBEC-1975
 
         Returns
         -------
         float
             Minimum longitudinal reinforcement ratio in tension zone
         """
-        return 0.8 * (self.fctd / self.fsyd)
-
-    @property
-    def rhol_max_tens(self) -> float:
-        """
-        Reference
-        ----------
-        Section 7.4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Maximum longitudinal reinforcement ratio in tens. and comp. zones
-        """
-        return 0.02
+        if self.steel.grade == "S220":
+            return 0.005
+        elif self.steel.grade == "S420":
+            return 0.003
 
     @property
     def rhoh_min(self) -> float:
         """
         Reference
         ----------
-        Eq.8.6 in T5500-2000
+        # Equation 12.3 in TS500-1984
 
         Returns
         -------
         float
             Minimum transverse reinforcement ratio
         """
-        return 0.3 * (self.fctd) / (self.fsyd)
+        return 0.15 * (self.fctd) / (self.fsyd)
 
-    @property
-    def envelope_forces_overstrength_adjusted(self) -> BeamEnvelopeForces:
-        """
-        Returns
-        -------
-        BeamEnvelopeForces
-            Returns the envelope forces computed from `combo_forces`.
-        """
-        # Get a list of all attributes
-        attributes = ["M1", "M5", "M9", "V1", "V5", "V9"]
-
-        # Find minimum and maximum for each attribute
-        min_values = [
-            min(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        max_values = [
-            max(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        return BeamEnvelopeForces(
-            M1_neg=min(min_values[0], 0.0),
-            M5_neg=min(min_values[1], 0.0),
-            M9_neg=min(min_values[2], 0.0),
-            M1_pos=max(max_values[0], 0.0),
-            M5_pos=max(max_values[1], 0.0),
-            M9_pos=max(max_values[2], 0.0),
-            V1=max(max_values[3], abs(min_values[3])),
-            V5=max(max_values[4], abs(min_values[4])),
-            V9=max(max_values[5], abs(min_values[5])),
-        )
-
-    def predesign_section_dimensions(
-        self, slab_h: float, slab_type: int
-    ) -> None:
+    def predesign_section_dimensions(self, slab_h: float) -> None:
         """Does preliminary design of beam.
 
         This method makes initial guess for section dimensions.
@@ -261,20 +129,15 @@ class Beam(BeamBase):
                 def_h = self.L / 12
             else:  # The beam is secondary gravity beam
                 def_h = self.L / (0.9 * 18)
-            # Compute height to provide support condition for slabs
-            if slab_type == 3:
-                bh_s = slab_h
-            else:
-                bh_s = 3 * slab_h
             # Get the maximum slab computed from all
-            self.h = max(self.min_h, bh_s, mu_h, def_h)
+            self.h = max(self.min_h, slab_h, mu_h, def_h)
             # Iterate for aspect ratio consideration
             while self.h / self.b > self.MAX_ASPECT_RATIO_EB:
                 # Increase breadth
                 self.b += self.B_INCR_EB
                 # Compute height for economic section, assuming d = 0.1h
-                mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd * self.b))
-                        ** 0.5) / 0.9
+                mu_h = ((Md / (ECONOMIC_MU_EB * self.fcd *
+                               self.b)) ** 0.5) / 0.9
                 # Compute height to control deformations
                 if self.stairs_wg != 0.0 or sum(self.slab_wg) != 0.0:
                     # The beam carries a slab (stairs or floor slab)
@@ -282,7 +145,7 @@ class Beam(BeamBase):
                 else:  # The beam is secondary gravity beam
                     def_h = self.L / (0.9 * 18)
                 # Get the maximum slab computed from all
-                self.h = max(self.min_h, bh_s, mu_h, def_h)
+                self.h = max(self.min_h, slab_h, mu_h, def_h)
         # Wide beam cases
         else:
             # Set section height (slab thickness or minimum)
@@ -299,14 +162,13 @@ class Beam(BeamBase):
                        self.b / self.h > self.MAX_ASPECT_RATIO_WB):
                     self.h += self.H_INCR_WB
                     self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
-
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20
 
     def verify_section_adequacy(self) -> None:
         """Verifies the beam section dimensions for design forces."""
-        # mu values (dimensionless) for economic section (eng. practice)
+        # Economic mu values (dimensionless)
         if self.typology == 1:
             mu_economic = ECONOMIC_MU_WB
         elif self.typology == 2:
@@ -317,16 +179,10 @@ class Beam(BeamBase):
         d = 0.90 * self.h
 
         # Maximum of envelope forces
-        if self.Ve1 != 0 and self.Ve9 != 0:
-            Vmax = max(self.Ve1, self.Ve9)
-        else:
-            Vmax = max(
-                self.envelope_forces.V1,
-                self.envelope_forces.V5,
-                self.envelope_forces.V9,
-            )
-
-        Mmax = max(
+        max_shear = max(
+            self.envelope_forces.V1, self.envelope_forces.V5,
+            self.envelope_forces.V9)
+        max_moment = max(
             self.envelope_forces.M1_pos,
             self.envelope_forces.M5_pos,
             self.envelope_forces.M9_pos,
@@ -336,11 +192,10 @@ class Beam(BeamBase):
         )
 
         # Verify the adequacy of the section dimensions
-        mu = Mmax / (self.fcd * self.b * d**2)  # For max. bending moment
-        Vrd_max = (0.85 * (self.b / mm) * (d / mm) *
-                   np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
+        Vrd_max = 0.25 * self.fcd * self.b * d  # Eq. 8.49 in TS500-1984
+        mu = max_moment / (self.fcd * self.b * d**2)  # for max. bending moment
 
-        if mu < mu_economic or Vmax < Vrd_max:
+        if mu < mu_economic or max_shear < Vrd_max:
             self.ok = True  # Ok
         else:
             self.ok = False  # Not ok
@@ -404,7 +259,7 @@ class Beam(BeamBase):
         return As_required, Asprime_required
 
     def compute_required_longitudinal_reinforcement(self) -> None:
-        """Computes the required reinforcement area for design forces.
+        """Computes the required longitudinal reinforcement for design forces.
 
         Notes
         -----
@@ -455,16 +310,15 @@ class Beam(BeamBase):
         Asl_top = np.maximum(Asl_top, Asl_min_tens)
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
 
-        # Compression to tension reinf. ratio must be greater than 0.5,
-        # Section 7.4.2 in TBEC2018
-        mask = Asl_top / Asl_bot < 0.5
-        if any(mask):
-            Asl_top[mask] = 0.5 * Asl_bot[mask]
-        mask = Asl_bot / Asl_top < 0.5
-        if any(mask):
-            Asl_bot[mask] = 0.5 * Asl_top[mask]
+        # Compression to tension reinf. ratio must be greater than 0.333
+        mask = Asl_top / Asl_bot < (1 / 3)
+        if np.any(mask):
+            Asl_top[mask] = (1 / 3) * Asl_bot[mask]
+        mask = Asl_bot / Asl_top < (1 / 3)
+        if np.any(mask):
+            Asl_bot[mask] = (1 / 3) * Asl_top[mask]
 
-        # Save required longitudinal steel area at top and bottom
+        # Save required longitudinal steel area
         self.Asl_top_req = Asl_top
         self.Asl_bot_req = Asl_bot
 
@@ -476,41 +330,20 @@ class Beam(BeamBase):
         1. Required reinforcement is computed at different sections:
         start, mid, end.
         """
-        # Shear forces due to gravity and earthquake loads
+        # Design shear force
         Vd = np.array(
             [self.envelope_forces.V1, self.envelope_forces.V5,
              self.envelope_forces.V9]
         )
-        Vd_oa = np.array(
-            [
-                self.envelope_forces_overstrength_adjusted.V1,
-                self.envelope_forces_overstrength_adjusted.V5,
-                self.envelope_forces_overstrength_adjusted.V9,
-            ]
-        )
 
-        # Design shear force
-        Ve = np.array([self.Ve1, self.envelope_forces.V5, self.Ve9])
-        Ve = np.minimum(Ve, Vd_oa)
-
-        # Shear force due to gravity loads
-        forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
-        Vdy = np.array([abs(forces.V1), abs(forces.V5), abs(forces.V9)])
-
-        # Shear force resisted by concrete, Eq.8.1 in TS500-2000
+        # Transverse reinforcement computation, Section 8.3 in TBEC-1984
         Vcr = 0.65 * self.fctd * self.b * (0.9 * self.h)
-        Vc = 0.8 * Vcr
-
-        # Transverse reinforcement computation, Section 7.4.5 in TBEC-2018
-        Ash_sbh = np.zeros(len(Ve))
-        mask = Ve <= Vcr
-        Ash_sbh[mask] = self.rhoh_min * self.b
-        shear_force_for_reinforcement = np.where(Ve - Vdy >= 0.5 * Vd, Ve,
-                                                 Ve - Vc)
-        Ash_sbh[~mask] = shear_force_for_reinforcement[~mask] / (
-            self.fsyd * (0.9 * self.h)
-        )
+        Ash_sbh = np.zeros(len(Vd))
+        Ash_sbh_min = self.rhoh_min * self.b
+        mask = Vd <= Vcr
+        Ash_sbh[mask] = Ash_sbh_min
+        Ash_sbh[~mask] = Vd[~mask] / (self.fsyd * (0.9 * self.h))
+        Ash_sbh = np.maximum(Ash_sbh, Ash_sbh_min)
 
         # Save required transverse reinforcement area to spacing ratio
-        Ash_sbh_min = self.rhoh_min * self.b  # Min. transverse reinforcement
-        self.Ash_sbh_req = np.maximum(Ash_sbh, Ash_sbh_min)
+        self.Ash_sbh_req = Ash_sbh

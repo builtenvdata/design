@@ -1,4 +1,4 @@
-{
+{ 
   "typical_storey_height": 
     {
       "cv": 0.08,
@@ -26,18 +26,18 @@
   "steel":
     {
       "grade": ["S220", "S420"],
-      "probability": [0.90, 0.10]
+      "probability": [0.20, 0.80]
     },
   "concrete":
     {
-      "grade": ["C12", "C14", "C16", "C20"],
-      "probability": [0.40, 0.40, 0.10, 0.10]
+      "grade": ["C20", "C25", "C30", "C35"],
+      "probability": [0.40, 0.40, 0.15, 0.05]
     },
   "ground_storey_height":
     {
       "maximum": 4.20,
-      "factor": [1.0, 1.1, 1.2, 1.3, 1.4],
-      "probability": [0.55, 0.10, 0.20, 0.10, 0.05]
+      "factor": [1.0, 1.1, 1.2, 1.3],
+      "probability": [0.70, 0.20, 0.08, 0.02]
     },
   "construction_quality":
     {
@@ -54,9 +54,9 @@
   "composite_slab_wb_ratio": 0.50,
   "square_column_ratio": 0.50,
   "layout": "all",
-  "beta": 0.06,
+  "beta": 0.15,
   "num_storeys": 5,
-  "design_class": "tr_pre75",
+  "design_class": "tr_0018",
   "seed": 1987,
   "sample_size": 150
 }

@@ -1436,11 +1436,10 @@ class BuildingBase(ABC):
     def __print_beam_failure(self, text: str) -> None:
         """Prints the number of failed beams and their dimensions.
         """
-        mapper = {1: 'wide and emergent beams are allowed',
-                  2: 'only emergent beams are allowed'}
         idxs = [i for i, beam in enumerate(self.beams) if not beam.ok]
-        print(len(idxs), f"beams failed to pass {text} design verification.\n",
-              f"where {mapper.get(self.beam_type)}.")
+        print(
+            len(idxs), f"beams failed to pass {text} design verification."
+            )
         # for idx in idxs:
         #     print(f"beam:{idx}, h={self.beams[idx].h},"
         #           f"b={self.beams[idx].b}")
@@ -1448,13 +1447,10 @@ class BuildingBase(ABC):
     def __print_column_failure(self, text: str) -> None:
         """Prints the number of failed columns and their dimensions.
         """
-        mapper = {1: 'solid square',
-                  2: 'solid rectangle'}
         idxs = [i for i, col in enumerate(self.columns)
                 if not (col.ok_x and col.ok_y)]
         print(
-            f"{len(idxs)} columns failed to pass {text} design verification.",
-            f"Columns have {mapper.get(self.column_section)} sections."
+            f"{len(idxs)} columns failed to pass {text} design verification."
             )
         # for idx in idxs:
         #     print(f"Column:{idx}, bx={self.columns[idx].bx},"
@@ -1480,7 +1476,7 @@ class BuildingBase(ABC):
         1. Perform section adequacy checks (e.g., max. normalized moment).
         2. If the section is adequate for given design forces,
         compute required longitudinal reinforcement area. Then,
-        find the rebar solution to meet detailing requirements and valdiate.
+        find the rebar solution to meet detailing requirements and validate.
         """
         # STAGE 1: Section adequacy check for design forces.
         self._validate_beam_section_dimensions()
@@ -1504,9 +1500,8 @@ class BuildingBase(ABC):
             (
                 dbl_t1, nbl_t1, dbl_t2, nbl_t2,
                 dbl_b1, nbl_b1, dbl_b2, nbl_b2
-            ) = self.rebars.get_beam_long_rebars(
-                Asl_top, Asl_bot, b
-                )
+            ) = self.rebars.get_beam_long_rebars(Asl_top, Asl_bot, b)
+
             # NOTE: Use the same reinforcement at two adjacent beam ends
             # Required for lap splices at joints (cont. reinf.)
             # NOTE: This could be unrealistic for adjacent spans with
@@ -2243,4 +2238,4 @@ class BuildingBase(ABC):
             # Set average column axial forces to be used.
             self._set_column_predesign_forces()
         else:
-            Warning('No design soltuion is found.')
+            Warning('No design solution is found.')

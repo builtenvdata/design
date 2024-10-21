@@ -1,5 +1,5 @@
 """
-Specific routines for defining and designing tr_post18 columns.
+Specific routines for defining and designing tr_0018 columns.
 
 Notes
 -----
@@ -9,40 +9,37 @@ Design based on limit state design.
 # Imports from installed packages
 from math import ceil
 import numpy as np
-from typing import List
 
-# Imports from the design class (tr_post18) library
+# Imports from the design class (tr_0018) library
 from .materials import Steel, Concrete
 
 # Imports from bdim base library
-from ..baselib.column import ColumnBase, ColumnForces, ColumnEnvelopeForces
+from ..baselib.column import ColumnBase
 
 # Imports from bdim tr_7599.column library
 from ..tr_7599.column import LongReinfAreaCalculator
 
 # Imports from utils library
-from ....utils.units import MPa, m, mm
-
+from ....utils.units import MPa, m
 
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
-MAX_NIU = 0.40
-"""Maximum allowed value of axial load ratio."""
+MAX_NIU = 0.50
+"""Maximum allowed value of axial load ratio. Section-7.3 in TBEC-1998
+and Section-3.3 in TBEC-2007"""
 
 
 class Column(ColumnBase):
-    """Column object for design class: tr_post18."""
+    """Column object for design class: tr_0018."""
 
     steel: Steel
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
-    MIN_B_SQUARE: float = 0.30 * m  # Section 7.3.1 in TBEC2018
+    MIN_B_SQUARE: float = 0.25 * m
     """The default minimum square column dimension."""
-    MIN_B_RECTANGLE: float = 0.30 * m  # Section 7.3.1 in TBEC2018
+    MIN_B_RECTANGLE: float = 0.25 * m
     """The default minimum rectangular column dimension."""
-    design_forces_overstrength_adjusted: List[ColumnForces]
-    """List of forces obtained for each load combination (design forces)."""
     Ve_x: float = 0.0
     """Column capacity design shear force through local x direction"""
     Ve_y: float = 0.0
@@ -73,44 +70,17 @@ class Column(ColumnBase):
         return self.fctk / self.concrete.PARTIAL_FACTOR
 
     @property
-    def Ix_eff(self) -> float:
-        """
-        Reference
-        ---------
-        Table-4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Effective column moment of inertia around x-axis.
-        """
-        return 0.7 * self.Ix
-
-    @property
-    def Iy_eff(self) -> float:
-        """
-        Reference
-        ---------
-        Table-4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Effective column moment of inertia around y-axis.
-        """
-        return 0.7 * self.Iy
-
-    @property
     def rhol_max(self) -> float:
         """
         Reference
         ---------
-        Section 7.3.2 in TBEC-2018
+        Section 7.3.2 in TBEC-1998
+        Section 3.3.2 in TBEC-2007
 
         Returns
         -------
         float
-            Maximum allowed longitudinal reinforcement ratio.
+            Maximum longitudinal reinforcement ratio.
         """
         return 0.04
 
@@ -119,7 +89,8 @@ class Column(ColumnBase):
         """
         Reference
         ---------
-        Section 7.3.2 in TBEC-2018
+        Section 7.3.2 in TBEC-1998
+        Section 3.3.2 in TBEC-2007
 
         Returns
         -------
@@ -133,7 +104,8 @@ class Column(ColumnBase):
         """
         Reference
         ---------
-        Section 7.3.4.1 in TBEC-2018
+        Section 7.3.4 in TBEC-1998
+        Section 3.3.4 in TBEC-2007
 
         Returns
         -------
@@ -147,7 +119,6 @@ class Column(ColumnBase):
             abs(self.envelope_forces.N1_neg),
             abs(self.envelope_forces.N9_neg),
         ) / (self.Ag * self.fck)
-
         Ack = (self.bx - 2 * self.cover) * (self.by - 2 * self.cover)
         ratio1 = 0.3 * (self.Ag / Ack - 1) * (self.fck / self.fsyk)
         ratio2 = 0.075 * (self.fck / self.fsyk)
@@ -156,70 +127,15 @@ class Column(ColumnBase):
         else:
             return (2 / 3) * max(ratio1, ratio2)
 
-    @property
-    def envelope_forces_overstrength_adjusted(self) -> ColumnEnvelopeForces:
-        """
-        Returns
-        -------
-        ColumnEnvelopeForces
-            Returns the envelope forces computed from `combo_forces`.
-        """
-        # Get a list of all attributes
-        attributes = [
-            "N1",
-            "Mx1",
-            "Vy1",
-            "My1",
-            "Vx1",
-            "N9",
-            "Mx9",
-            "Vy9",
-            "My9",
-            "Vx9",
-        ]
-
-        # Find minimum and maximum for each attribute
-        min_values = [
-            min(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        max_values = [
-            max(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        return ColumnEnvelopeForces(
-            N1_neg=min(min_values[0], 0.0),
-            N1_pos=max(max_values[0], 0.0),
-            Mx1_neg=min(min_values[1], 0.0),
-            Mx1_pos=min(max_values[1], 0.0),
-            Vy1=max(max_values[2], abs(min_values[2])),
-            My1_neg=min(min_values[3], 0.0),
-            My1_pos=min(max_values[3], 0.0),
-            Vx1=max(max_values[4], abs(min_values[4])),
-            N9_neg=min(min_values[5], 0.0),
-            N9_pos=max(max_values[5], 0.0),
-            Mx9_neg=min(min_values[6], 0.0),
-            Mx9_pos=min(max_values[6], 0.0),
-            Vy9=max(max_values[7], abs(min_values[7])),
-            My9_neg=min(min_values[8], 0.0),
-            My9_pos=min(max_values[8], 0.0),
-            Vx9=max(max_values[9], abs(min_values[9])),
-        )
-
     def predesign(self) -> None:
         """Does preliminary design of column.
+
         This method makes initial guess for section dimensions.
         """
         # Unit conversions
         Nd = self.pre_Nd
         # Initial guess for column concrete area
-        min_area = Nd / (MAX_NIU * self.fck)
+        min_area = max(0.075, Nd / (MAX_NIU * self.fck))
         # Determine initial dimensions
         if self.section == 1:  # Square section
             self.bx = min_area**0.5
@@ -267,16 +183,14 @@ class Column(ColumnBase):
             max_Vx = max(self.envelope_forces.Vx1, self.envelope_forces.Vx9)
             max_Vy = max(self.envelope_forces.Vy1, self.envelope_forces.Vy9)
 
-        # Distance from extreme compression fiber to centroid of longitudinal
-        # reinforcement.
+        # Distance from extreme compression fiber to
+        # centroid of longitudinal reinforcement.
         dx = 0.90 * self.bx
         dy = 0.90 * self.by
 
-        # Maximum acceptable shear force # Eq. 7.7 in TBEC-2018
-        Vrdx = 0.85 * np.sqrt(self.fck / MPa) * (self.by /
-                                                 mm) * (dx / mm) / 1000
-        Vrdy = 0.85 * np.sqrt(self.fck / MPa) * (self.bx /
-                                                 mm) * (dy / mm) / 1000
+        # Maximum acceptable shear force # Eq. 8.7 in TS500-2000
+        Vrdx = 0.22 * self.fcd * self.by * dx
+        Vrdy = 0.22 * self.fcd * self.bx * dy
 
         # Verify the adequacy of the section dimensions
         if (max_mu_y / 0.70) > ECONOMIC_MU or max_Vx > Vrdx:
@@ -305,8 +219,8 @@ class Column(ColumnBase):
             N9d = 0 if force.N9 > 0 else abs(force.N9)
 
             # Equation-6.16 in TS500
-            ex = 0.015 + 0.03 * self.bx  # min. eccentricity in the x direction
-            ey = 0.015 + 0.03 * self.by  # min. eccentricity in the y direction
+            ex = 0.015 + 0.03 * self.bx  # minimum eccent. in the x direction
+            ey = 0.015 + 0.03 * self.by  # minimum eccent. in the y direction
 
             My1d_ecc = N1d * ex
             My9d_ecc = N9d * ex
@@ -362,11 +276,12 @@ class Column(ColumnBase):
         Vcr_y = 0.65 * self.fctd * self.bx * dy * (1 + 0.07 * Nd / self.Ag)
         Vc_y = 0.8 * Vcr_y
 
-        # Transverse reinforcement computation, Section 7.3.7 in TBEC-2018
+        # Transverse reinforcement computation
+        # Section 7.3.7 in TBEC-1998 and Section 3.3.7 in TBEC-2007
         if Ve_x <= Vcr_x:
             Ashx_sh = self.rhoh_min * self.by
         else:
-            if Ve_x > 0.5 * Vd_x and Nd <= 0.05 * self.Ag * self.fck:
+            if Ve_x >= 0.5 * Vd_x and Nd <= 0.05 * self.Ag * self.fck:
                 Vc_x = 0
             Vw = Ve_x - Vc_x
             Ashx_sh = Vw / (self.fsyd * dx)
@@ -374,7 +289,7 @@ class Column(ColumnBase):
         if Ve_y <= Vcr_y:
             Ashy_sh = self.rhoh_min * self.bx
         else:
-            if Ve_y > 0.5 * Vd_y and Nd <= 0.05 * self.Ag * self.fck:
+            if Ve_y >= 0.5 * Vd_y and Nd <= 0.05 * self.Ag * self.fck:
                 Vc_y = 0
             Vw = Ve_y - Vc_y
             Ashy_sh = Vw / (self.fsyd * dy)

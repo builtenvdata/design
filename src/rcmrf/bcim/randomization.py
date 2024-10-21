@@ -257,7 +257,7 @@ class Sampler:
         # Z = np.random.multivariate_normal(mu, cov, size=num_sample)
         z = multivariate_normal(mu, cov, self.sample_size)
         u = norm.cdf(z, loc=0.0, scale=1.0)
-        # Log-normal truncuated distribution
+        # Log-normal truncated distribution
         mu_ln = np.log(np.array(theta))
         rx = log_normal_truncated_cdf_inv(
             u[:, 0], mu=mu_ln[0], sigma=std_ln[0],

@@ -1,5 +1,5 @@
 """
-Specific routines for defining and designing tr_post18 beams.
+Specific routines for defining and designing tr_0018 beams.
 
 Notes
 -----
@@ -7,23 +7,24 @@ Design based on limit state design.
 
 References
 ----------
-TBEC-2018(TR)-Turkish Building Earthquake Code
-TS500-2000(TR)-Design and Construction Rules for Reinforced Concrete Buildings
+TBEC-1998(TR)-Specification for Structures to be Built in Disaster Areas
+TBEC-2007(TR)-Specification for Structures to be Built in Disaster Areas
+TS500-2000(TR)-Design and Construction Rules for Reinfoced Concrete Buildings
 """
 
 # Imports from installed packages
 from math import ceil
 import numpy as np
-from typing import List, Tuple
+from typing import Tuple
 
-# Imports from the design class (tr_post18) library
+# Imports from the design class (tr_0018) library
 from .materials import Steel, Concrete
 
 # Imports from bdim base library
-from ..baselib.beam import BeamBase, BeamForces, BeamEnvelopeForces, Array3
+from ..baselib.beam import BeamBase, Array3
 
 # Imports from units library
-from ....utils.units import MPa, m, mm
+from ....utils.units import MPa, m
 
 # Constants
 ECONOMIC_MU_EB: float = 0.25
@@ -35,18 +36,16 @@ EPS_CU = 0.003
 
 
 class Beam(BeamBase):
-    """Beam object for design class: tr_post18."""
+    """Beam object for design class: tr_0018."""
 
     steel: Steel
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
     MIN_B_EB: float = 0.25 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-2018"""
+    """The default minimum breadth (width) of emergent beams.TBEC-1998"""
     MIN_H_EB: float = 0.30 * m
-    """The default minimum breadth (width) of emergent beams.TBEC-2018"""
-    design_forces_overstrength_adjusted: List[BeamForces]
-    """List of forces obtained each load combination (design forces)."""
+    """The default minimum breadth (width) of emergent beams.TBEC-1998"""
     Ve1: float = 0.0
     """Beam capacity design shear force at 1st gaussian point"""
     Ve9: float = 0.0
@@ -57,7 +56,8 @@ class Beam(BeamBase):
         """
         Reference
         ---------
-        Section 7.4.1 in TBEC-2018
+        Section 7.4.1 in TBEC-1998
+        Section 3.4.1 in TBEC-2007
 
         Returns
         -------
@@ -83,7 +83,8 @@ class Beam(BeamBase):
         """
         Reference
         ---------
-        Section 7.4.1 in TBEC-2018
+        Section 7.4.1 in TBEC-1998
+        Section 3.4.1 in TBEC-2007
 
         Returns
         -------
@@ -94,7 +95,7 @@ class Beam(BeamBase):
         bool1 = self.typology == 2  # Emergent by default
         bool2 = self.exterior  # Forces exterior beams to emergent
         bool3 = self.stairs_wg != 0.0  # Forces stairs beams to be emergent
-        h_max_code = 3.5 * self.b
+        h_max_code = min(3.5 * self.b, self.L / 4)
         if bool1 or bool2 or bool3:
             return min(self.MAX_H_EB, h_max_code)
         else:
@@ -104,7 +105,7 @@ class Beam(BeamBase):
     def fctk(self) -> float:
         """
         Reference
-        ----------
+        ---------
         Equation 3.1 in T5500-2000
 
         Returns
@@ -125,39 +126,11 @@ class Beam(BeamBase):
         return self.fctk / self.concrete.PARTIAL_FACTOR
 
     @property
-    def Iy_eff(self) -> float:
-        """
-        Reference
-        ----------
-        Table 4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Moment of inertia around y-axis of the beam.
-        """
-        return 0.35 * self.Iy
-
-    @property
-    def Ix_eff(self) -> float:
-        """
-        Reference
-        ----------
-        Table 4.2 in TBEC-2018
-
-        Returns
-        -------
-        float
-            Moment of inertia around x-axis of the beam.
-        """
-        return 0.35 * self.Ix
-
-    @property
     def rhol_min_tens(self) -> float:
         """
         Reference
         ----------
-        Equation 7.8 in TBEC-2018
+        Equation 3.8 in TBEC-2007
 
         Returns
         -------
@@ -171,7 +144,7 @@ class Beam(BeamBase):
         """
         Reference
         ----------
-        Section 7.4.2 in TBEC-2018
+        Equation 7.5 in T5500-2000
 
         Returns
         -------
@@ -185,7 +158,7 @@ class Beam(BeamBase):
         """
         Reference
         ----------
-        Eq.8.6 in T5500-2000
+        Equation 8.6 in T5500-2000
 
         Returns
         -------
@@ -193,44 +166,6 @@ class Beam(BeamBase):
             Minimum transverse reinforcement ratio
         """
         return 0.3 * (self.fctd) / (self.fsyd)
-
-    @property
-    def envelope_forces_overstrength_adjusted(self) -> BeamEnvelopeForces:
-        """
-        Returns
-        -------
-        BeamEnvelopeForces
-            Returns the envelope forces computed from `combo_forces`.
-        """
-        # Get a list of all attributes
-        attributes = ["M1", "M5", "M9", "V1", "V5", "V9"]
-
-        # Find minimum and maximum for each attribute
-        min_values = [
-            min(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        max_values = [
-            max(
-                getattr(force, attr)
-                for force in self.design_forces_overstrength_adjusted
-            )
-            for attr in attributes
-        ]
-        return BeamEnvelopeForces(
-            M1_neg=min(min_values[0], 0.0),
-            M5_neg=min(min_values[1], 0.0),
-            M9_neg=min(min_values[2], 0.0),
-            M1_pos=max(max_values[0], 0.0),
-            M5_pos=max(max_values[1], 0.0),
-            M9_pos=max(max_values[2], 0.0),
-            V1=max(max_values[3], abs(min_values[3])),
-            V5=max(max_values[4], abs(min_values[4])),
-            V9=max(max_values[5], abs(min_values[5])),
-        )
 
     def predesign_section_dimensions(
         self, slab_h: float, slab_type: int
@@ -299,7 +234,6 @@ class Beam(BeamBase):
                        self.b / self.h > self.MAX_ASPECT_RATIO_WB):
                     self.h += self.H_INCR_WB
                     self.b = Md / (ECONOMIC_MU_WB*self.fcd*(0.9*self.h)**2)
-
         # Round
         self.h = ceil(20 * self.h) / 20
         self.b = ceil(20 * self.b) / 20
@@ -336,9 +270,8 @@ class Beam(BeamBase):
         )
 
         # Verify the adequacy of the section dimensions
-        mu = Mmax / (self.fcd * self.b * d**2)  # For max. bending moment
-        Vrd_max = (0.85 * (self.b / mm) * (d / mm) *
-                   np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
+        mu = Mmax / (self.fcd * self.b * d**2)
+        Vrd_max = 0.22 * self.b * d * self.fcd  # Equation 8.7 in TS500-2000
 
         if mu < mu_economic or Vmax < Vrd_max:
             self.ok = True  # Ok
@@ -455,8 +388,7 @@ class Beam(BeamBase):
         Asl_top = np.maximum(Asl_top, Asl_min_tens)
         Asl_bot = np.maximum(Asl_bot, Asl_min_tens)
 
-        # Compression to tension reinf. ratio must be greater than 0.5,
-        # Section 7.4.2 in TBEC2018
+        # Compression to tension reinf. ratio must be greater than 0.5
         mask = Asl_top / Asl_bot < 0.5
         if any(mask):
             Asl_top[mask] = 0.5 * Asl_bot[mask]
@@ -481,17 +413,9 @@ class Beam(BeamBase):
             [self.envelope_forces.V1, self.envelope_forces.V5,
              self.envelope_forces.V9]
         )
-        Vd_oa = np.array(
-            [
-                self.envelope_forces_overstrength_adjusted.V1,
-                self.envelope_forces_overstrength_adjusted.V5,
-                self.envelope_forces_overstrength_adjusted.V9,
-            ]
-        )
 
         # Design shear force
         Ve = np.array([self.Ve1, self.envelope_forces.V5, self.Ve9])
-        Ve = np.minimum(Ve, Vd_oa)
 
         # Shear force due to gravity loads
         forces = self.forces["G/seismic"] + self.forces["Q/seismic"]
@@ -501,7 +425,8 @@ class Beam(BeamBase):
         Vcr = 0.65 * self.fctd * self.b * (0.9 * self.h)
         Vc = 0.8 * Vcr
 
-        # Transverse reinforcement computation, Section 7.4.5 in TBEC-2018
+        # Transverse reinforcement computation,
+        # Section 7.4.5 in TBEC-1998 and Section 3.4.5 in TBEC-2007
         Ash_sbh = np.zeros(len(Ve))
         mask = Ve <= Vcr
         Ash_sbh[mask] = self.rhoh_min * self.b
