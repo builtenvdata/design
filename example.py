@@ -30,7 +30,7 @@ for design_class in design_classes:
     bcim = BCIM()
     # Generate a building portfolio
     bcim.generate(
-        sample_size=10,
+        sample_size=2,
         design_class=design_class,
         num_storeys=5,
         beta=0.1
@@ -69,15 +69,15 @@ for design_class in design_classes:
                             directory=outdir_building)
         fim.plot_mode_shape(mode_number=2, contour='y', show=False,
                             directory=outdir_building)
-    # Perform the pushover directly for the last building
-    push_dir = outdir_building / 'NSPA-Results-X'
-    dx, vx = fim.do_nspa(ctrl_dof=1, out_dir=push_dir)
-    push_dir = outdir_building / 'NSPA-Results-Y'
-    dy, vy = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
-    plt.plot(dx, vx, label='X-dir')
-    plt.plot(dy, vy, label='Y-dir')
-    plt.xlabel("Control Node Displacement [m]")
-    plt.ylabel("Base Shear [kN]")
-    plt.legend()
-    plt.savefig(outdir_building / "nspa.png", dpi=300)
-    plt.close()
+        # Do nonlinear static pushover analysis in both directions
+        push_dir = outdir_building / 'NSPA-Results-X'
+        dx, vx = fim.do_nspa(ctrl_dof=1, out_dir=push_dir)
+        push_dir = outdir_building / 'NSPA-Results-Y'
+        dy, vy = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
+        plt.plot(dx, vx, label='X-dir')
+        plt.plot(dy, vy, label='Y-dir')
+        plt.xlabel("Control Node Displacement [m]")
+        plt.ylabel("Base Shear [kN]")
+        plt.legend()
+        plt.savefig(outdir_building / "nspa.png", dpi=300)
+        plt.close()
