@@ -188,17 +188,17 @@ class Building(BuildingBase):
             sum_mrdb_y_pos = 0.0
             sum_mrdb_y_neg = 0.0
             if joint.left_beam:
-                sum_mrdb_x_pos += joint.left_beam.pos_Mrd[-1]
-                sum_mrdb_x_neg += joint.left_beam.neg_Mrd[-1]
+                sum_mrdb_x_pos += joint.left_beam.mrd_pos[-1]
+                sum_mrdb_x_neg += joint.left_beam.mrd_neg[-1]
             if joint.right_beam:
-                sum_mrdb_x_pos += joint.right_beam.neg_Mrd[0]
-                sum_mrdb_x_neg += joint.right_beam.pos_Mrd[0]
+                sum_mrdb_x_pos += joint.right_beam.mrd_neg[0]
+                sum_mrdb_x_neg += joint.right_beam.mrd_pos[0]
             if joint.rear_beam:
-                sum_mrdb_y_pos += joint.rear_beam.pos_Mrd[-1]
-                sum_mrdb_y_neg += joint.rear_beam.neg_Mrd[-1]
+                sum_mrdb_y_pos += joint.rear_beam.mrd_pos[-1]
+                sum_mrdb_y_neg += joint.rear_beam.mrd_neg[-1]
             if joint.front_beam:
-                sum_mrdb_y_pos += joint.front_beam.neg_Mrd[0]
-                sum_mrdb_y_neg += joint.front_beam.pos_Mrd[0]
+                sum_mrdb_y_pos += joint.front_beam.mrd_neg[0]
+                sum_mrdb_y_neg += joint.front_beam.mrd_pos[0]
             sum_mrdb_y = max(sum_mrdb_y_pos, sum_mrdb_y_neg)
             sum_mrdb_x = max(sum_mrdb_x_pos, sum_mrdb_x_neg)
 
@@ -263,17 +263,17 @@ class Building(BuildingBase):
             sum_mrdb_y_pos = 0.0
             sum_mrdb_y_neg = 0.0
             if joint.left_beam:
-                sum_mrdb_x_pos += joint.left_beam.pos_Mrd[-1]
-                sum_mrdb_x_neg += joint.left_beam.neg_Mrd[-1]
+                sum_mrdb_x_pos += joint.left_beam.mrd_pos[-1]
+                sum_mrdb_x_neg += joint.left_beam.mrd_neg[-1]
             if joint.right_beam:
-                sum_mrdb_x_pos += joint.right_beam.neg_Mrd[0]
-                sum_mrdb_x_neg += joint.right_beam.pos_Mrd[0]
+                sum_mrdb_x_pos += joint.right_beam.mrd_neg[0]
+                sum_mrdb_x_neg += joint.right_beam.mrd_pos[0]
             if joint.rear_beam:
-                sum_mrdb_y_pos += joint.rear_beam.pos_Mrd[-1]
-                sum_mrdb_y_neg += joint.rear_beam.neg_Mrd[-1]
+                sum_mrdb_y_pos += joint.rear_beam.mrd_pos[-1]
+                sum_mrdb_y_neg += joint.rear_beam.mrd_neg[-1]
             if joint.front_beam:
-                sum_mrdb_y_pos += joint.front_beam.neg_Mrd[0]
-                sum_mrdb_y_neg += joint.front_beam.pos_Mrd[0]
+                sum_mrdb_y_pos += joint.front_beam.mrd_neg[0]
+                sum_mrdb_y_neg += joint.front_beam.mrd_pos[0]
 
             return (sum_mrdb_x_pos, sum_mrdb_x_neg,
                     sum_mrdb_y_pos, sum_mrdb_y_neg)
@@ -552,10 +552,10 @@ class Building(BuildingBase):
             Vdy_j = abs(forces.V9)
 
             # The beam moment of resistances at both ends
-            Mpi_pos = gamma_rd * beam.pos_Mrd[0]
-            Mpi_neg = gamma_rd * beam.neg_Mrd[0]
-            Mpj_pos = gamma_rd * beam.pos_Mrd[-1]
-            Mpj_neg = gamma_rd * beam.neg_Mrd[-1]
+            Mpi_pos = gamma_rd * beam.mrd_pos[0]
+            Mpi_neg = gamma_rd * beam.mrd_neg[0]
+            Mpj_pos = gamma_rd * beam.mrd_pos[-1]
+            Mpj_neg = gamma_rd * beam.mrd_neg[-1]
 
             # Capacity design shear forces at both ends
             Ved_i_pos = Vdy_i + (Mpi_pos + Mpj_neg) / beam_lc

@@ -840,36 +840,9 @@ class ColumnBase(ABC):
         -------
         float
             Design value of moment of resistance around local x.
-
-        References
-        ----------
-        REBAP (1983) Regulamento de Estruturas de Betão Armado e PréEsforçado.
-        Decreto-Lei N.° 349-C/83, Lisbon, Portugal
-
-        TODO
-        ----
-        Do we use design value of concrete strength?
         """
-        # Stress block coefficients for different axial load ratio (REBAP 1983)
-        BETA_FC_VECTOR = [1.00, 0.93, 0.88, 0.88, 0.93]
-        # Axial load ratio corresponding to each stress block coefficient
-        NIU_VECTOR = [0.40, 0.50, 0.60, 0.70, 0.85]
-        Ned = -1.0 * kwargs['Ned']  # Make compression force positive
-        Aslx = 2*np.pi*0.25*(2*self.dbl_cor**2 + self.nblx_int*self.dbl_int**2)
-        omega_x = (Aslx / self.Ag) * (self.fsyd / self.fcd)
-        niu = Ned / (self.Ag * self.fcd)
-        niu_c = niu - 0.85
-        beta_c = np.interp(niu, NIU_VECTOR, BETA_FC_VECTOR)
-        lambda_x = 0.5 - self.cover / self.by  # h is by
-        if niu < 0.0:  # Axial force is tensile
-            mu_x = (omega_x + niu) * (lambda_x * beta_c)
-        elif niu <= 0.85:  # Axial force is compressive and lower than 0.85
-            mu_x = (omega_x * lambda_x * beta_c) - (0.55 * niu * niu_c)
-        else:  # Axial force is compressive and greater than 0.85
-            mu_x = (omega_x - niu_c) * (lambda_x * beta_c)
-        Mrdx = mu_x * self.bx * (self.by**2) * self.fcd
-
-        return Mrdx
+        # Make compression force positive
+        return self._get_mrd(-1.0*kwargs['Ned'], 'x')
 
     def get_mrdy(self, **kwargs) -> float:
         """Computes the design value of moment of resistance around local y.
@@ -885,36 +858,65 @@ class ColumnBase(ABC):
         -------
         float
             Design value of moment of resistance around local y.
+        """
+        # Make compression force positive
+        return self._get_mrd(-1.0*kwargs['Ned'], 'y')
+
+    def _get_mrd(self, Ned: float, axis=Literal['x', 'y']) -> float:
+        """Computes the design value of moment of resistance around
+        specified local axis.
+
+        Parameters
+        ----------
+        Ned : float
+            Mean axial force on column (compressive force has positive sign).
+
+        Returns
+        -------
+        float
+            Design value of moment of resistance around specified local axis.
 
         References
         ----------
         REBAP (1983) Regulamento de Estruturas de Betão Armado e PréEsforçado.
         Decreto-Lei N.° 349-C/83, Lisbon, Portugal
-
-        TODO
-        ----
-        Do we use design value of concrete strength?
         """
         # Stress block coefficients for different axial load ratio (REBAP 1983)
         BETA_FC_VECTOR = [1.00, 0.93, 0.88, 0.88, 0.93]
         # Axial load ratio corresponding to each stress block coefficient
         NIU_VECTOR = [0.40, 0.50, 0.60, 0.70, 0.85]
-        Ned = -1.0 * kwargs['Ned']  # Make compression force positive
-        Asly = 2*np.pi*0.25*(2*self.dbl_cor**2 + self.nbly_int*self.dbl_int**2)
-        omega_y = (Asly / self.Ag) * (self.fsyd / self.fcd)
+        # Axis dependent section properties
+        if axis == 'x':  # Around local x-axis
+            h = self.bx
+            b = self.by
+            nbl_int = self.nblx_int
+        elif axis == 'y':  # Around local y-axis
+            b = self.by
+            h = self.bx
+            nbl_int = self.nbly_int
+        # Total steel area, ignoring the intermediate steel
+        Asl = 2*np.pi*0.25*(2*self.dbl_cor**2 + nbl_int*self.dbl_int**2)
+        # Dimensionless omega (similar to reinf. ratio)
+        omega = (Asl / self.Ag) * (self.fsyd / self.fcd)
+        # Axial load ratio
         niu = Ned / (self.Ag * self.fcd)
+        # Axial load ratio - 0.85
         niu_c = niu - 0.85
+        # Stress block coefficient for given axial load ratio
         beta_c = np.interp(niu, NIU_VECTOR, BETA_FC_VECTOR)
-        lambda_y = 0.5 - self.cover / self.bx  # h is bx
+        # Dimensionless lambda
+        lambda_ = 0.5 - self.cover / h
+        # Dimensionless mu
         if niu < 0.0:  # Axial force is tensile
-            mu_y = (omega_y + niu) * (lambda_y * beta_c)
+            mu = (omega + niu) * (lambda_ * beta_c)
         elif niu <= 0.85:  # Axial force is compressive and lower than 0.85
-            mu_y = (omega_y * lambda_y * beta_c) - (0.55 * niu * niu_c)
+            mu = (omega * lambda_ * beta_c) - (0.55 * niu * niu_c)
         else:  # Axial force is compressive and greater than 0.85
-            mu_y = (omega_y - niu_c) * (lambda_y * beta_c)
-        Mrdy = mu_y * self.by * (self.bx**2) * self.fcd
-
-        return Mrdy
+            mu = (omega - niu_c) * (lambda_ * beta_c)
+        # Design moment of resistance
+        Mrd = mu * b * (h**2) * self.fcd
+        # Return
+        return Mrd
 
     @abstractmethod
     def verify_section_adequacy(self) -> None:

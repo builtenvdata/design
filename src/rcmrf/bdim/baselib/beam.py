@@ -890,7 +890,7 @@ class BeamBase(ABC):
             return self.MIN_H_WB
 
     @property
-    def pos_Mrd(self) -> Array3[np.float64]:
+    def mrd_pos(self) -> Array3[np.float64]:
         """
         Returns
         -------
@@ -902,79 +902,10 @@ class BeamBase(ABC):
         -----
         Required for capacity design of columns.
         """
-        # Concrete crushing strain used for computing section capacity
-        EPS_CU = 0.0035
-        # Stress-block coefficient used to compute section capacity
-        if self.fck < 27.6 * MPa:
-            betac = 0.85
-        elif self.fck > 55.17 * MPa:
-            betac = 0.65
-        else:
-            betac = 1.05 - 0.05 * self.fck / (6.9 * MPa)
-        # Yield strain of steel bars
-        esy = self.fsyk / self.Es
-        # Concrete modulus of elasticity
-        Ec = self.Ecd
-        # Steel modulus of elasticity
-        Es = self.Es
-        # Modular ratio
-        nyoung = Es / Ec
-        # Distance from top fiber to bottom rebars
-        if hasattr(self, 'dbh'):
-            dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_t1
-        else:
-            # Assume transverse bar reinforcement diameter (dbh = 6mm)
-            # dd = 0.9 * self.h
-            dd = self.h - self.cover - 0.006 - 0.5 * self.dbl_t1
-        # Distance from top fiber to top rebars
-        dd_prime = self.h - dd
-        # Balanced  value of c: distance to neutral axis from top fiber
-        cb = (EPS_CU * dd) / (EPS_CU + esy)
-        # Tension and compression reinforcement
-        As_tens = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
-                   self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
-        rhol_tens = As_tens / (self.b * dd)
-        As_comp = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
-                   self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
-        rhol_comp = As_comp / (self.b * dd)
-        # Compute distance to neutral axis with outer faces (simplification)
-        c = (As_tens * self.fsyd - As_comp * self.fsyd) / (
-            0.85 * self.fcd * self.b * betac)
-        # Decide whether yielding is controlled by tension or compression zone
-        # Panagiotakos and Fardis 2001 - Equation 4 & 5
-        Acomp_cntrl = rhol_tens + rhol_comp
-        Atens_cntrl = rhol_tens + rhol_comp
-        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
-        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
-        # Yielding is controlled by the tension steel
-        control = np.ones(len(dd))
-        A_to_use = Atens_cntrl
-        B_to_use = Btens_cntrl
-        # Yielding is controlled by the compression zone
-        control[c >= cb] = 0
-        A_to_use[c >= cb] = Acomp_cntrl[c >= cb]
-        B_to_use[c >= cb] = Bcomp_cntrl[c >= cb]
-        # The compression zone depth: Panagiotakos and Fardis 2001 - Equation 3
-        ky = (((nyoung**2) * (A_to_use**2) + (2*nyoung*B_to_use))**0.5
-              - nyoung*A_to_use)
-        # Panagiotakos and Fardis 2001 - Equation 1
-        fiy1 = self.fsyd / (Es * (1 - ky) * dd)
-        # Panagiotakos and Fardis 2001 - Equation 2
-        fiy2 = (1.8 * (self.fcd) / (Ec * ky * dd))
-        # Yield curvature
-        fiy = fiy1
-        fiy[control == 0] = fiy2[control == 0]
-        # Yield Moment: Panagiotakos and Fardis 2001 - Equation 6
-        term1 = Ec * 0.5 * (ky**2) * (0.5 * (1 + (dd_prime / dd)) - (ky / 3))
-        term2 = ((0.50 * Es) * (
-            (1 - ky) * rhol_tens + (ky - (dd_prime / dd)) * rhol_comp)
-            * (1 - (dd_prime / dd)))
-        Mrd = ((self.b) * ((dd)**3)) * fiy * (term1 + term2)
-
-        return Mrd
+        return self._get_mrd('pos')
 
     @property
-    def neg_Mrd(self) -> Array3[np.float64]:
+    def mrd_neg(self) -> Array3[np.float64]:
         """
         Returns
         -------
@@ -986,15 +917,72 @@ class BeamBase(ABC):
         -----
         Required for capacity design of columns.
         """
+        return self._get_mrd('neg')
+
+    def _get_mrd(self, direction: Literal['neg', 'pos']) -> Array3[np.float64]:
+        """
+        Computes yield moment of the section in the given direction.
+
+        Parameters
+        ----------
+        direction : Literal['neg', 'pos']
+            Moment capacity direction (based on the sign convention).
+
+        Returns
+        -------
+        My : np.ndarray
+            Yield moment of beam in the specified `direction`.
+            Computed for start, mid, end beam sections.
+
+        References
+        ----------
+        Panagiotakos, T. B., & Fardis, M. N. (2001).
+        Deformations of reinforced concrete members at yielding and ultimate.
+        Structural Journal, 98(2), 135-148.
+
+        Notes
+        -----
+        - Positive direction indicates that
+        bottom section is tension zone and top section is compression zone.
+        - Negative direction indicates that
+        top section is tension zone and bottom section is compression zone.
+
+        TODO
+        ----
+        Might need to switch to practice equations
+        rather than using those in research paper.
+        """
+        # Set direction dependent parameters
+        if direction == 'pos':  # positive direction case
+            # Longitudinal reinforcement area under tension
+            As_tens = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
+                       self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
+            # Longitudinal reinforcement area under compression
+            As_comp = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
+                       self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+        elif direction == 'neg':  # negative direction case
+            # Longitudinal reinforcement area under tension
+            As_tens = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
+                       self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+            # Longitudinal reinforcement area under compression
+            As_comp = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
+                       self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
+
+        # Dist. from concrete fiber in compression to the rebars in tension
+        if hasattr(self, 'dbh'):
+            dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_t1
+        else:
+            dd = 0.9 * self.h  # Assume
         # Concrete crushing strain used for computing section capacity
         EPS_CU = 0.0035
         # Stress-block coefficient used to compute section capacity
-        if self.fck < 27.6 * MPa:
+        # TODO: Reference
+        if self.fcd < 27.6 * MPa:
             betac = 0.85
-        elif self.fck > 55.17 * MPa:
+        elif self.fcd > 55.17 * MPa:
             betac = 0.65
         else:
-            betac = 1.05 - 0.05 * self.fck / (6.9 * MPa)
+            betac = 1.05 - 0.05 * self.fcd / (6.9 * MPa)
         # Yield strain of steel bars
         esy = self.fsyk / self.Es
         # Concrete modulus of elasticity
@@ -1003,35 +991,24 @@ class BeamBase(ABC):
         Es = self.Es
         # Modular ratio
         nyoung = Es / Ec
-        # Distance from top fiber to bottom rebars
-        if hasattr(self, 'dbh'):
-            dd = self.h - self.cover - self.dbh - 0.5 * self.dbl_t1
-        else:
-            # Assume transverse bar reinforcement diameter (dbh = 6mm)
-            # dd = 0.9 * self.h
-            dd = self.h - self.cover - 0.006 - 0.5 * self.dbl_t1
-        # Distance from top fiber to top rebars
+        # Distance from ext. concrete fiber (comp.) to the rebars (comp.)
         dd_prime = self.h - dd
-        # Balanced  value of c: distance to neutral axis from top fiber
+        # Balanced c value: dist. to neutral axis from ext. conc. fiber (comp.)
         cb = (EPS_CU * dd) / (EPS_CU + esy)
-        # Tension and compression reinforcement
-        As_tens = (self.nbl_t1 * ((0.25 * np.pi) * self.dbl_t1**2) +
-                   self.nbl_t2 * ((0.25 * np.pi) * self.dbl_t2**2))
+        # Tension and compression longitudinal reinforcement ratio values
         rhol_tens = As_tens / (self.b * dd)
-        As_comp = (self.nbl_b1 * ((0.25 * np.pi) * self.dbl_b1**2) +
-                   self.nbl_b2 * ((0.25 * np.pi) * self.dbl_b2**2))
         rhol_comp = As_comp / (self.b * dd)
         # Compute distance to neutral axis with outer faces (simplification)
-        c = (As_tens * self.fsyd - As_comp * self.fsyd) / (
-            0.85 * self.fcd * self.b * betac)
+        c = (As_tens * self.fsyd - As_comp * self.fsyd) \
+            / (0.85 * self.fcd * self.b * betac)
         # Decide whether yielding is controlled by tension or compression zone
         # Panagiotakos and Fardis 2001 - Equation 4 & 5
         Acomp_cntrl = rhol_tens + rhol_comp
         Atens_cntrl = rhol_tens + rhol_comp
-        Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
-        Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
+        Bcomp_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
+        Btens_cntrl = rhol_tens + rhol_comp * (dd_prime / dd)
         # Yielding is controlled by the tension steel
-        control = np.ones(len(dd))
+        control = np.ones_like(self.dbl_t1)
         A_to_use = Atens_cntrl
         B_to_use = Btens_cntrl
         # Yielding is controlled by the compression zone
@@ -1052,9 +1029,9 @@ class BeamBase(ABC):
         term1 = Ec * 0.5 * (ky**2) * (0.5 * (1 + (dd_prime / dd)) - (ky / 3))
         term2 = ((0.50 * Es) * ((1 - ky) * rhol_tens + (ky - (dd_prime / dd))
                                 * rhol_comp) * (1 - (dd_prime / dd)))
-        Mrd = ((self.b) * ((dd)**3)) * fiy * (term1 + term2)
+        My = (self.b * (dd**3)) * fiy * (term1 + term2)
 
-        return Mrd
+        return My
 
     def restore_dimensions(self) -> None:
         """Restore beam dimension attributes.

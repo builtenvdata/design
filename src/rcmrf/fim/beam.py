@@ -441,39 +441,41 @@ class Beam:
 
         # Compute yield moments in positive and negative directions at both
         # end sections of the beam (i and j) - Panagiotakos and Fardis (2001)
-        My_top, fiy_top = self._get_my('negative')
-        My_bot, fiy_bot = self._get_my('positive')
+        My_neg, fiy_neg = self._get_my('negative')
+        My_pos, fiy_pos = self._get_my('positive')
         # Maximum moment capacity
-        Mc_top = Mc_My * My_top
-        Mc_bot = Mc_My * My_bot
+        Mc_neg = Mc_My * My_neg
+        Mc_pos = Mc_My * My_pos
         # Residual moment capacity
-        Mr_top = Mr_Mc*Mc_top
-        Mr_bot = Mr_Mc*Mc_bot
+        Mr_neg = Mr_Mc*Mc_neg
+        Mr_pos = Mr_Mc*Mc_pos
 
         # Plastic Rotation capacity by Haselton et al. 2016 - Equation 5
         c_u = 1.0  # Unit conversion coefficient 1.0 for MPa, 6.9 for ksi
-        theta_cap_pl_top = 0.12 * (1 + 0.55 * self.bondslip_factor) * \
+        theta_cap_pl_pos = 0.12 * (1 + 0.55 * self.bondslip_factor) * \
             (0.16**niu) * ((0.02 + 40*rhoh)**0.43) * \
             (0.54**(0.01*c_u*fc_mpa)) * (0.66**(0.1*sn)) * (2.27**(10.0*rhol))
-        # TODO: This should be changed, use Equation 7.
-        ratio_bot_top = self.design.rhol_bot / self.design.rhol_top
-        theta_cap_pl_bot = ratio_bot_top * theta_cap_pl_top
+        # Non-symmetric beam section - Equation 7
+        # NOTE: This is different than MATLAB implementation
+        ratio_pos_neg = np.maximum(
+            0.01, self.design.rhol_top / self.design.rhol_bot) ** 0.225
+        theta_cap_pl_neg = ratio_pos_neg * theta_cap_pl_pos
         # Post-capping rotation capacity by Haselton et al. 2016 - Equation 8
-        theta_pc_top = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
-        theta_pc_top[theta_pc_top >= 0.10] = 0.10
-        theta_pc_bot = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
-        theta_pc_bot[theta_pc_bot >= 0.10] = 0.10
+        theta_pc_neg = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
+        theta_pc_neg[theta_pc_neg >= 0.10] = 0.10
+        theta_pc_pos = 0.76 * (0.031**niu) * ((0.02 + 40*rhoh)**1.02)
+        theta_pc_pos[theta_pc_pos >= 0.10] = 0.10
 
         # Yield rotation capacity - EN 1998-3:2004 - Equation A.10b
-        theta_y1_top = fiy_top * ((ls + (av*z))/3)
-        theta_y1_bot = fiy_bot * ((ls + (av*z))/3)
+        theta_y1_neg = fiy_neg * ((ls + (av*z))/3)
+        theta_y1_pos = fiy_pos * ((ls + (av*z))/3)
         theta_y2 = 0.0014 * (1 + 1.5*h/ls)
-        theta_y3_top = 0.125*fiy_top*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
-        theta_y3_bot = 0.125*fiy_bot*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
-        theta_y_top = (
-            theta_y1_top + theta_y2 + self.bondslip_factor * theta_y3_top)
+        theta_y3_neg = 0.125*fiy_neg*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
+        theta_y3_bot = 0.125*fiy_pos*dbl_t1 * (fsyl_mpa / (fc_mpa**0.50))
+        theta_y_pos = (
+            theta_y1_neg + theta_y2 + self.bondslip_factor * theta_y3_neg)
         theta_y_bot = (
-            theta_y1_bot + theta_y2 + self.bondslip_factor * theta_y3_bot)
+            theta_y1_pos + theta_y2 + self.bondslip_factor * theta_y3_bot)
 
         # Elastic stiffness multiplier
         # Ibarra and Krawinkler (2005), Zareian and Medina (2010)
@@ -481,14 +483,14 @@ class Beam:
 
         # Strain values e1p, e2p, e3p, e1n, e2n, e3n  (hysteretic material)
         # Rotation values for monotonic loading
-        theta_1_top = theta_y_top / n_factor
-        theta_2_top = (theta_y_top / n_factor) + theta_cap_pl_top
-        theta_3_top = (theta_y_top / n_factor) + theta_cap_pl_top + \
-            theta_pc_top
-        theta_1_bot = theta_y_bot / n_factor
-        theta_2_bot = (theta_y_bot / n_factor) + theta_cap_pl_bot
-        theta_3_bot = (theta_y_bot / n_factor) + theta_cap_pl_bot + \
-            theta_pc_bot
+        theta_1_neg = theta_y_pos / n_factor
+        theta_2_neg = (theta_y_pos / n_factor) + theta_cap_pl_neg
+        theta_3_neg = (theta_y_pos / n_factor) + theta_cap_pl_neg + \
+            theta_pc_neg
+        theta_1_pos = theta_y_bot / n_factor
+        theta_2_pos = (theta_y_bot / n_factor) + theta_cap_pl_pos
+        theta_3_pos = (theta_y_bot / n_factor) + theta_cap_pl_pos + \
+            theta_pc_pos
         # NOTE: rotation values needs to be adjusted for cyclic loading
         # theta_cap_pl needs to be factored by 0.7
         # theta_pc needs to be factored by 0.5
@@ -506,28 +508,28 @@ class Beam:
         beta = 0.85  # TODO: Reference
 
         # NOTE: This part is different than original implementation
-        # TODO: I think negative one should be based on top values
-        # and positive one should be based on bot values
+        # The negative ones are based on top (compression) reinforcement
+        # The positive ones are based on bottom (tension) renforcement
         mat_tag_i = self.ele_node_i.tag
         mat_inputs_i = [
             mat_tag_i,
-            My_bot[0], theta_1_bot[0],
-            Mc_bot[0], theta_2_bot[0],
-            Mr_bot[0], theta_3_bot[0],
-            -My_top[0], -theta_1_top[0],
-            -Mc_top[0], -theta_2_top[0],
-            -Mr_top[0], -theta_3_top[0],
+            My_pos[0], theta_1_pos[0],
+            Mc_pos[0], theta_2_pos[0],
+            Mr_pos[0], theta_3_pos[0],
+            -My_neg[0], -theta_1_neg[0],
+            -Mc_neg[0], -theta_2_neg[0],
+            -Mr_neg[0], -theta_3_neg[0],
             pinchx, pinchy, damage1, damage2, beta
                  ]
         mat_tag_j = self.ele_node_j.tag
         mat_inputs_j = [
             mat_tag_j,
-            My_bot[-1], theta_1_bot[-1],
-            Mc_bot[-1], theta_2_bot[-1],
-            Mr_bot[-1], theta_3_bot[-1],
-            -My_top[-1], -theta_1_top[-1],
-            -Mc_top[-1], -theta_2_top[-1],
-            -Mr_top[-1], -theta_3_top[-1],
+            My_pos[-1], theta_1_pos[-1],
+            Mc_pos[-1], theta_2_pos[-1],
+            Mr_pos[-1], theta_3_pos[-1],
+            -My_neg[-1], -theta_1_neg[-1],
+            -Mc_neg[-1], -theta_2_neg[-1],
+            -Mr_neg[-1], -theta_3_neg[-1],
             pinchx, pinchy, damage1, damage2, beta
                  ]
 
@@ -612,8 +614,6 @@ class Beam:
 
         # Set direction dependent parameters
         if direction == 'positive':  # positive direction case
-            # Dist. from concrete fiber in compression to the rebars in tension
-            dd = h - cover - dbh - 0.5 * dbl_b1
             # Longitudinal reinforcement area under tension
             As_tens = (nbl_b1 * ((0.25 * np.pi) * dbl_b1**2) +
                        nbl_b2 * ((0.25 * np.pi) * dbl_b2**2))
@@ -621,8 +621,6 @@ class Beam:
             As_comp = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2) +
                        nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
         elif direction == 'negative':  # negative direction case
-            # Dist. from concrete fiber in compression to the rebars in tension
-            dd = h - cover - dbh - 0.5 * dbl_t1
             # Longitudinal reinforcement area under tension
             As_tens = (nbl_t1 * ((0.25 * np.pi) * dbl_t1**2) +
                        nbl_t2 * ((0.25 * np.pi) * dbl_t2**2))
@@ -647,6 +645,8 @@ class Beam:
         nyoung = Es / Ec
         # Yield strain of steel bars
         esy = fsyl / Es
+        # Dist. from concrete fiber in compression to the rebars in tension
+        dd = h - cover - dbh - 0.5 * dbl_b1
         # Distance from ext. concrete fiber (comp.) to the rebars (comp.)
         dd_prime = h - dd
         # Balanced c value: dist. to neutral axis from ext. conc. fiber (comp.)
@@ -663,7 +663,7 @@ class Beam:
         Bcomp_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         Btens_cntrl = rhol_tens + rhol_comp*(dd_prime/dd)
         # Yielding is controlled by the tension steel
-        control = np.ones(len(dd))
+        control = np.ones_like(dd)
         A_to_use = Atens_cntrl
         B_to_use = Btens_cntrl
         # Yielding is controlled by the compression zone
