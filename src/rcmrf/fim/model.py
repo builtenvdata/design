@@ -263,6 +263,11 @@ class FIM:
         if self.design.beam_type == 1:  # Wide beams are used.
             # Rigid joints are imposed in the case of wide beams to
             # force damage localization.
+            """TODO: I am not sure if this should be done here.
+            Exterior beams are always emergent in fact. We may still see
+            joint damage. In the future, we may do this check inside, and
+            determine the modelling option for each joint separately.
+            Note that the modelling optional is then direction dependent."""
             flex_model = 'rigid'
         else:  # Based on quality and design class for emergent beam cases.
             flex_model = self.design.quality.model.joint
