@@ -108,7 +108,7 @@ class Column(ColumnBase):
         """
         return max(0.12 * self.fck / self.fsyk, 0.01)
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
 
         This method makes initial guess for section dimensions.

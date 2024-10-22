@@ -64,7 +64,7 @@ class Column(ColumnBase):
         else:
             return aux
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
 
         This method makes initial guess for section dimensions.

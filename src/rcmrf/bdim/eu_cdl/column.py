@@ -199,7 +199,7 @@ class Column(ColumnBase):
         # Assuming the area of core concrete = 80% total area of the section
         return 0.01 * 0.66
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
 
         This method makes initial guess for section dimensions.

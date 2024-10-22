@@ -45,14 +45,16 @@ for design_class in design_classes:
         print("----------------------------------------------------")
         print(f"Designing {design_class.upper()} building: "
               f"{i+1}/{len(bcim.taxonomy)}")
+        # Set the output directory
+        outdir_building = outdir_class / f'Building_{i+1}'
         # Initialize BDIM
         bdim = get_bdim(taxonomy)
         # Make simumlated design
         bdim.run_iterative_design_algorithm()
+        # Export to csv
+        bdim.to_csv(outdir_building / 'BDIM-Data')
         # Initialize FIM
         fim = FIM(bdim)
-        # Set the output directory
-        outdir_building = outdir_class / f'Building_{i+1}'
         # Export numerical models for OpenSeesPy
         fim.to_py(outdir_building / 'OpsPy-Model')
         # Export numerical models for OpenSeesTcl
@@ -60,12 +62,13 @@ for design_class in design_classes:
         # Do modal analysis
         modal_dir = outdir_building / 'Modal-Results'
         fim.do_modal(num_modes=6, out_dir=modal_dir)
-
-    # Plot the model of the last building
-    fim.plot_model(directory=outdir_building)
-    # Plot the first mode shape of the last building
-    fim.plot_mode_shape(mode_number=1, contour='x', directory=outdir_building)
-    fim.plot_mode_shape(mode_number=2, contour='y', directory=outdir_building)
+        # Plot the model and save
+        fim.plot_model(directory=outdir_building, show=False)
+        # Plot the first two mode shapes and save
+        fim.plot_mode_shape(mode_number=1, contour='x', show=False,
+                            directory=outdir_building)
+        fim.plot_mode_shape(mode_number=2, contour='y', show=False,
+                            directory=outdir_building)
     # Perform the pushover directly for the last building
     push_dir = outdir_building / 'NSPA-Results-X'
     dx, vx = fim.do_nspa(ctrl_dof=1, out_dir=push_dir)
@@ -73,7 +76,7 @@ for design_class in design_classes:
     dy, vy = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
     plt.plot(dx, vx, label='X-dir')
     plt.plot(dy, vy, label='Y-dir')
-    plt.xlabel("Displacement of control node [m]")
+    plt.xlabel("Control Node Displacement [m]")
     plt.ylabel("Base Shear [kN]")
     plt.legend()
     plt.savefig(outdir_building / "nspa.png", dpi=300)

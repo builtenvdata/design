@@ -112,7 +112,7 @@ class Column(ColumnBase):
         # EN 1992-1-1:2004, 9.2.2(5), Eqn. 9.5N
         return 0.08 * ((self.fck/MPa)**0.5) / (self.fsyk/MPa)
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
 
         This method makes initial guess for section dimensions.

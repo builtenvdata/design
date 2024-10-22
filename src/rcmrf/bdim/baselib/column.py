@@ -775,7 +775,7 @@ class ColumnBase(ABC):
                 self.bx = ceil(20*max(self.bx, 0.5*self.by)) / 20
                 self.bx = ceil(20 * self.bx) / 20
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
 
         This method makes initial guess for section dimensions.

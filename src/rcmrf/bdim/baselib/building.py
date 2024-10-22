@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from typing import List, Type, Literal, Dict, Tuple, Optional, Union
 import numpy as np
 from math import ceil
+from pathlib import Path
+import pandas as pd
 
 # Imports from bdim base library
 from .analysis import ElasticModelBase
@@ -28,6 +30,10 @@ from .stairs import StairsBase
 # Imports from geometry library
 from ....geometry.mesh import Point, Line, Rectangle
 from ....geometry.frame import FrameBase
+
+# Imports from utils library
+from ....utils.misc import make_dir
+from ....utils.units import MPa, mm
 
 
 @dataclass
@@ -1329,16 +1335,16 @@ class BuildingBase(ABC):
         # Set design forces for columns and beams
         self._set_column_predesign_forces()
         self._set_beam_predesign_forces()
-        # Predesign columns
+        # Predesign columns, guess the initial dimensions
         for column in self.columns:
-            column.predesign()  # Guess the initial dimensions
+            column.predesign_section_dimensions()
         # Uniformize column sections
         self._uniformize_columns_geometry()
         # Set preliminary design dimensions
         for column in self.columns:
             column.pre_bx = column.bx
             column.pre_by = column.by
-        # Predesign beams
+        # Predesign beams, guess the initial dimensions
         for beam in self.beams:
             beam.predesign_section_dimensions(self.slab_thickness)
         # Uniformize beam sections
@@ -2181,15 +2187,9 @@ class BuildingBase(ABC):
     def run_iterative_design_algorithm(self) -> None:
         """Routine for iterative design algorithm.
 
-        TODO
-        ----
-        - The routine could be slightly different than the original algorithm.
-        Still needs to be checked.
-        - Another idea could be to check the type of element which does not
-        pass the design check, and perform actions according to that.
-        This could be a better algorithm. It could be more resonable to check
-        everything for beams first, and then for columns, including dimension
-        increase.
+        Notes
+        -----
+        The algorithm is slightly different than the original algorithm.
         """
         counter = 0  # Counter for design iterations
         while not self.ok and counter <= self.ITER_MAX:  # Iteration loop
@@ -2239,3 +2239,169 @@ class BuildingBase(ABC):
             self._set_column_predesign_forces()
         else:
             Warning('No design solution is found.')
+
+    def to_csv(self, directory: Union[str, Path]) -> None:
+        """Saves the generated BDIM data into the specified directory.
+
+        The files will be saved into the directory upon re-creating it.
+
+        Parameters
+        ----------
+        directory : str | Path
+            Output directory where the bdim outputs (.csv files) will be saved.
+            e.g., My/Directory/Path
+        """
+        if not self.ok:
+            return
+
+        # Create the output directory
+        directory = Path(directory)
+        make_dir(directory)
+
+        # Set the paths for .csv files
+        joints_path = directory / 'joints.csv'
+        columns_path = directory / 'columns.csv'
+        beams_path = directory / 'beams.csv'
+
+        # Retrive the bondslip factor and joint model type
+        bondslip_factor = self.quality.model.bondslip_factor
+        joint_model = self.quality.model.joint
+
+        # Keys to save for joints
+        j_keys = (
+            'node_id', 'x-coord [m]', 'y-coord [m]', 'z-coord [m]',
+            'bottom_column', 'top_column',
+            'left_beam_x', 'right_beam_x', 'left_beam_y', 'right_beam_y',
+            'fcm [MPa]', 'model_type_q'
+        )
+        # Start joints dictionary
+        j_dict = {key: [] for key in j_keys}
+        # Loop through each joint and append
+        for jnt in self.joints:
+            j_dict['node_id'].append(jnt.elastic_node.tag)
+            j_dict['x-coord [m]'].append(jnt.elastic_node.coordinates[0])
+            j_dict['y-coord [m]'].append(jnt.elastic_node.coordinates[1])
+            j_dict['z-coord [m]'].append(jnt.elastic_node.coordinates[2])
+            j_dict['bottom_column'].append(jnt.bottom_column)
+            j_dict['top_column'].append(jnt.top_column)
+            j_dict['left_beam_x'].append(jnt.left_beam)
+            j_dict['right_beam_x'].append(jnt.right_beam)
+            j_dict['left_beam_y'].append(jnt.rear_beam)
+            j_dict['right_beam_y'].append(jnt.front_beam)
+            j_dict['fcm [MPa]'].append(joint_model)
+            j_dict['model_type_q'].append(joint_model)
+        # Convert joints dictionary to Pandas DataFrame
+        joints = pd.DataFrame(j_dict)
+        # Export joints DataFrame as .csv file
+        joints.to_csv(joints_path, index=False, float_format='%g')
+
+        # Keys to save for columns
+        c_keys = (
+            'column_id', 'node_i', 'node_j',
+            'bx [mm]', 'by [mm]', 'length [mm]',
+            'wg [kN/m]', 'wq [kN/m]', 'fcd [MPa]', 'fsyd [MPa]', 'cover [mm]',
+            'dbl_cor [mm]', 'dbl_int [mm]', 'nblx_int', 'nbly_int',
+            'dbh [mm]', 'sbh [mm]', 'nbh_x', 'nbh_y',
+            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]', 'sbh_q [mm]',
+            'cover_q [mm]', 'bondslip_factor_q'
+        )
+        # Start columns dictionary
+        c_dict = {key: [] for key in c_keys}
+        # Loop through each column and append
+        for col in self.columns:
+            c_dict['column_id'].append(col.line.tag)
+            c_dict['node_i'].append(col.elastic_nodes[0].tag)
+            c_dict['node_j'].append(col.elastic_nodes[1].tag)
+            c_dict['bx [mm]'].append(col.bx / mm)
+            c_dict['by [mm]'].append(col.by / mm)
+            c_dict['length [mm]'].append(col.H / mm)
+            c_dict['wg [kN/m]'].append(col.self_wg)
+            c_dict['wq [kN/m]'].append(0.0)
+            c_dict['fcd [MPa]'].append(col.fcd / MPa)
+            c_dict['fsyd [MPa]'].append(col.fsyd / MPa)
+            c_dict['cover [mm]'].append(col.cover / mm)
+            c_dict['dbl_cor [mm]'].append(col.dbl_cor / mm)
+            c_dict['dbl_int [mm]'].append(col.dbl_int / mm)
+            c_dict['nblx_int'].append(col.nblx_int)
+            c_dict['nbly_int'].append(col.nbly_int)
+            c_dict['dbh [mm]'].append(col.dbh / mm)
+            c_dict['sbh [mm]'].append(col.sbh / mm)
+            c_dict['nbh_x'].append(col.nbh_x)
+            c_dict['nbh_y'].append(col.nbh_y)
+            c_dict['fcm_q [MPa]'].append(col.fc_q / MPa)
+            c_dict['fsyml_q [MPa]'].append(col.fsyl_q / MPa)
+            c_dict['fsymh_q [MPa]'].append(col.fsyh_q / MPa)
+            c_dict['sbh_q [mm]'].append(col.sbh_q / mm)
+            c_dict['cover_q [mm]'].append(col.cover_q / mm)
+            c_dict['bondslip_factor_q'].append(bondslip_factor)
+        # Convert columns dictionary to Pandas DataFrame
+        columns = pd.DataFrame(c_dict)
+        # Export columns DataFrame as .csv file
+        columns.to_csv(columns_path, index=False, float_format='%g')
+
+        # Keys to save for beams
+        b_keys = (
+            'beam_id', 'node_i', 'node_j', 'b [mm]', 'h [mm]', 'length [mm]',
+            'wg [kN/m]', 'wq [kN/m]', 'wg_alpha [kN/m]', 'wq_alpha [kN/m]',
+            'fcd [MPa]', 'fsyd [MPa]', 'cover [mm]',
+            'dbl_t1_i [mm]', 'nbl_t1_i', 'dbl_t2_i [mm]', 'nbl_t2_i',
+            'dbl_b1_i [mm]', 'nbl_b1_i', 'dbl_b2_i [mm]', 'nbl_b2_i',
+            'dbh_i [mm]', 'sbh_i [mm]', 'nbh_b_i', 'nbh_h_i',
+            'dbl_t1_j [mm]', 'nbl_t1_j', 'dbl_t2_j [mm]', 'nbl_t2_j',
+            'dbl_b1_j [mm]', 'nbl_b1_j', 'dbl_b2_j [mm]', 'nbl_b2_j',
+            'dbh_j [mm]', 'sbh_j [mm]', 'nbh_b_j', 'nbh_h_j',
+            'fcm_q [MPa]', 'fsyml_q [MPa]', 'fsymh_q [MPa]',
+            'sbh_i_q [mm]', 'sbh_j_q [mm]', 'cover_q [mm]', 'bondslip_factor_q'
+        )
+        # Start beams dictionary
+        b_dict = {key: [] for key in b_keys}
+        # Loop through each column and append
+        for beam in self.beams:
+            b_dict['beam_id'].append(beam.line.tag)
+            b_dict['node_i'].append(beam.elastic_nodes[0].tag)
+            b_dict['node_j'].append(beam.elastic_nodes[1].tag)
+            b_dict['b [mm]'].append(beam.b / mm)
+            b_dict['h [mm]'].append(beam.h / mm)
+            b_dict['length [mm]'].append(beam.L / mm)
+            b_dict['wg [kN/m]'].append(beam.wg_total)
+            b_dict['wq [kN/m]'].append(beam.wq_total)
+            b_dict['wg_alpha [kN/m]'].append(beam.wg_total_alpha)
+            b_dict['wq_alpha [kN/m]'].append(beam.wg_total_alpha)
+            b_dict['fcd [MPa]'].append(beam.fcd / MPa)
+            b_dict['fsyd [MPa]'].append(beam.fsyd / MPa)
+            b_dict['cover [mm]'].append(beam.cover / mm)
+            b_dict['dbl_t1_i [mm]'].append(beam.dbl_t1[0] / mm)
+            b_dict['dbl_t1_j [mm]'].append(beam.dbl_t1[-1] / mm)
+            b_dict['nbl_t1_i'].append(beam.nbl_t1[0])
+            b_dict['nbl_t1_j'].append(beam.nbl_t1[-1])
+            b_dict['dbl_t2_i [mm]'].append(beam.dbl_t2[0] / mm)
+            b_dict['dbl_t2_j [mm]'].append(beam.dbl_t2[-1] / mm)
+            b_dict['nbl_t2_i'].append(beam.nbl_t2[0])
+            b_dict['nbl_t2_j'].append(beam.nbl_t2[-1])
+            b_dict['dbl_b1_i [mm]'].append(beam.dbl_b1[0] / mm)
+            b_dict['dbl_b1_j [mm]'].append(beam.dbl_b1[-1] / mm)
+            b_dict['nbl_b1_i'].append(beam.nbl_b1[0])
+            b_dict['nbl_b1_j'].append(beam.nbl_b1[-1])
+            b_dict['dbl_b2_i [mm]'].append(beam.dbl_b2[0] / mm)
+            b_dict['dbl_b2_j [mm]'].append(beam.dbl_b2[-1] / mm)
+            b_dict['nbl_b2_i'].append(beam.nbl_b2[0])
+            b_dict['nbl_b2_j'].append(beam.nbl_b2[-1])
+            b_dict['dbh_i [mm]'].append(beam.dbh[0] / mm)
+            b_dict['sbh_i [mm]'].append(beam.sbh[0] / mm)
+            b_dict['nbh_b_i'].append(beam.nbh_b[0])
+            b_dict['nbh_h_i'].append(beam.nbh_h[0])
+            b_dict['dbh_j [mm]'].append(beam.dbh[-1] / mm)
+            b_dict['sbh_j [mm]'].append(beam.sbh[-1] / mm)
+            b_dict['nbh_b_j'].append(beam.nbh_b[-1])
+            b_dict['nbh_h_j'].append(beam.nbh_h[-1])
+            b_dict['fcm_q [MPa]'].append(beam.fc_q / MPa)
+            b_dict['fsyml_q [MPa]'].append(beam.fsyl_q / MPa)
+            b_dict['fsymh_q [MPa]'].append(beam.fsyh_q / MPa)
+            b_dict['sbh_i_q [mm]'].append(beam.sbh_q[0] / mm)
+            b_dict['sbh_j_q [mm]'].append(beam.sbh_q[-1] / mm)
+            b_dict['cover_q [mm]'].append(beam.cover_q / mm)
+            b_dict['bondslip_factor_q'].append(bondslip_factor)
+        # Convert beams dictionary to Pandas DataFrame
+        beams = pd.DataFrame(b_dict)
+        # Export beams DataFrame as .csv file
+        beams.to_csv(beams_path, index=False, float_format='%g')

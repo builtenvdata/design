@@ -146,7 +146,7 @@ class Building(BuildingBase):
         self._set_beam_predesign_forces()
         # Predesign columns
         for column in self.columns:
-            column.predesign()  # Guess the initial dimensions
+            column.predesign_section_dimensions()  # Guess the initial dimensions
         # Uniformize column sections
         self._uniformize_columns_geometry()
         # Set preliminary design dimensions

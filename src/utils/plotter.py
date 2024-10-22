@@ -515,35 +515,12 @@ def plot_model(
         point_size = 0.0
         spheres = False
 
-    # Add the surface mesh to the plot
-    pl.add_mesh(
-        mesh_original,
-        show_edges=True,
-        render_points_as_spheres=spheres,
-        point_size=point_size,
-        color="green",
-        opacity=1.0,
-        render_lines_as_tubes=False,
-        line_width=1,
-    )
-
-    # Add the line mesh (beam-column elements) to the plot
-    pl.add_mesh(
-        mesh_lines_original,
-        show_edges=True,
-        render_points_as_spheres=spheres,
-        point_size=point_size,
-        color="green",
-        opacity=1.0,
-        render_lines_as_tubes=False,
-        line_width=line_width,
-    )
-
     # Get coordinates for element tags
     ele_tag_coord = _get_ele_tag_coord(element_array, node_array)
 
     # Plot the groups of elements if any are specified
     if ele_groups is not None:
+
         for gg, this_group in enumerate(ele_groups[0]):
             this_group_ele_arr = [None] * len(this_group)
             this_group_color = ele_groups[1][gg]
@@ -561,7 +538,7 @@ def plot_model(
             pl.add_mesh(
                 mesh_this_group,
                 render_points_as_spheres=False,
-                point_size=point_size,
+                point_size=0.0,
                 show_edges=False,
                 color=this_group_color,
                 opacity=1.0,
@@ -573,13 +550,51 @@ def plot_model(
             pl.add_mesh(
                 mesh_lines_this_group,
                 render_points_as_spheres=False,
-                point_size=point_size,
+                point_size=0.0,
                 show_edges=False,
+                style='wireframe',
                 color=this_group_color,
                 opacity=1.0,
                 render_lines_as_tubes=True,
                 line_width=line_width,
             )
+
+        # Add all points
+        pl.add_mesh(
+            mesh_original,
+            show_edges=False,
+            render_points_as_spheres=spheres,
+            point_size=point_size,
+            style='points',
+            color="green",
+            opacity=1.0,
+            render_lines_as_tubes=False,
+            line_width=0.0,
+        )
+
+    else:
+        # Add the surface mesh to the plot
+        pl.add_mesh(
+            mesh_original,
+            show_edges=True,
+            render_points_as_spheres=spheres,
+            point_size=point_size,
+            color="green",
+            opacity=1.0,
+            render_lines_as_tubes=False,
+            line_width=1,
+        )
+        # Add the line mesh (beam-column elements) to the plot
+        pl.add_mesh(
+            mesh_lines_original,
+            show_edges=True,
+            render_points_as_spheres=spheres,
+            point_size=point_size,
+            color="green",
+            opacity=1.0,
+            render_lines_as_tubes=False,
+            line_width=line_width,
+        )
 
     # Set the camera view
     if set_view == "xy":

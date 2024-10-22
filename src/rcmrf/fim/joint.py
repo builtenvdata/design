@@ -72,7 +72,6 @@ class StairsJoint:
         ref_tag = self.ref_point.tag
         ref_coords = self.ref_point.coordinates
         # Initialize center node
-        # TODO: Mass in vertical direction?
         masses = [mass, mass, mass, 0.0, 0.0, 0.0]
         self.center_node = Node(ref_tag, ref_coords, masses)
         # Initialize rigid offsets nodes
@@ -122,13 +121,13 @@ class StairsJoint:
         Returns
         -------
         float
-            Joint width along global y-axis.
+            Joint width along global y-axis (based on columns' section widths).
         """
         by = 0.0
         if self.design.top_column:
-            by = max(by, self.design.top_column.bx)
+            by = max(by, self.design.top_column.by)
         if self.design.bottom_column:
-            by = max(by, self.design.bottom_column.bx)
+            by = max(by, self.design.bottom_column.by)
         return by
 
     @property
@@ -141,13 +140,7 @@ class StairsJoint:
 
         Notes
         -----
-        Larger value according to O'Reilly (2016).
-
-        References
-        ----------
-        O'Reilly, G. J. (2016). Performance-based seismic assessment and
-        retrofit of existing RC frame buildings in Italy
-        (Doctoral dissertation, IUSS Pavia).
+        The largest of the beam heights is selected.
         """
         h = 0.0
         if self.design.left_beam:
@@ -314,14 +307,42 @@ class FloorJoint(StairsJoint):
 
     Attributes
     ----------
+    design : JointBase
+        Instance of joint design information model.
+    center_node : Node
+        Central joint node for connecting nodes at joint offset distances.
     floor_node : Node
         Floor node which is constrained by floor diaphragm.
+    left_node : Node | None
+        The left joint node at offset distance along x-axis.
+    right_node : Node | None
+        The right joint node at offset distance along x-axis.
+    bottom_node : Node | None
+        The bottom joint node at offset distance along z-axis.
+    top_node : Node | None
+        The top joint node at offset distance along z-axis.
     rear_node : Node | None
         The rear joint node at offset distance along y-axis.
     front_node : Node | None
         The front joint node at offset distance along y-axis.
     flexibility_model : Literal['inelastic', 'elastic', 'rigid']
         Joint flexibility model.
+
+    References
+    ----------
+    O'Reilly, G. J. (2016). Performance-based seismic assessment and
+    retrofit of existing RC frame buildings in Italy
+    (Doctoral dissertation, IUSS Pavia).
+
+    O'Reilly, G. J., & Sullivan, T. J. (2019). Modeling techniques for
+    the seismic assessment of the existing Italian RC frame structures.
+    Journal of Earthquake Engineering, 23(8), 1262-1296.
+
+    GitHub - gerardjoreilly/Numerical-Modelling-of-GLD-RC-Frames: Set of
+    OpenSees procedures used to model RC frames designed prior to the 1970s
+    in Italy, as outlined and calibrated in O'Reilly & Sullivan [2019].
+    https://github.com/gerardjoreilly/Numerical-Modelling-of-GLD-RC-Frames.
+    Accessed 21 Oct 2024.
     """
 
     floor_node: Node
@@ -598,26 +619,34 @@ class FloorJoint(StairsJoint):
         return content
 
     @property
-    def category(self) -> Literal['roof', 'exterior', 'interior']:
+    def category_x(self) -> Literal['roof', 'exterior', 'interior']:
         """
         Returns
         -------
         Literal['roof', 'exterior', 'interior']
-            Joint category based on its location.
-
-        TODO
-        ----
-        To me, it does not make sense to tag joint as exterior or interior
-        for both directions. Could be tagged as interior in one axis,
-        and exterior as in another axis. I think this requires discussion.
+            Joint category along-x axis based on its location.
         """
         if self.design.top_column is None:
             return 'roof'
         else:
-            beams = [
-                self.design.left_beam, self.design.right_beam,
-                self.design.front_beam, self.design.rear_beam
-                ]
+            beams = [self.design.left_beam, self.design.right_beam]
+            if None in beams:
+                return 'exterior'
+            else:
+                return 'interior'
+
+    @property
+    def category_y(self) -> Literal['roof', 'exterior', 'interior']:
+        """
+        Returns
+        -------
+        Literal['roof', 'exterior', 'interior']
+            Joint category along-y axis based on its location.
+        """
+        if self.design.top_column is None:
+            return 'roof'
+        else:
+            beams = [self.design.front_beam, self.design.rear_beam]
             if None in beams:
                 return 'exterior'
             else:
@@ -641,11 +670,17 @@ class FloorJoint(StairsJoint):
         float
             Itnernal storey height
 
-        TODO
-        ----
-        Original code was using internal storey height only.
+        Notes
+        -----
+        The equations were derived using constant storey height.
+        If possible the average one is used.
         """
-        return self.design.bottom_column.H
+        if self.design.top_column is None:
+            return self.design.bottom_column.H
+        elif self.design.bottom_column is None:
+            return self.design.top_column.H
+        else:
+            return self.design.top_column.H
 
     @property
     def bb_x(self) -> float:
@@ -653,7 +688,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of beams' widths along global x-axis.
+            Maximum of beam section widths (view along x or in yz-plane).
         """
         bbx = 0.0
         if self.design.front_beam:
@@ -668,7 +703,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of columns' widths along global x-axis.
+            Maximum of column section heights (view along x or in yz-plane).
         """
         return self.bx
 
@@ -678,7 +713,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of columns' widths along global x-axis.
+            Maximum of column section widths (view along x or in yz-plane).
         """
         return self.by
 
@@ -688,7 +723,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of columns' widths along global y-axis.
+            Maximum of column section heights (view along y or in xz-plane).
         """
         return self.by
 
@@ -698,7 +733,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of columns' widths along global y-axis.
+            Maximum of column section widths (view along y or in xz-plane).
         """
         return self.bx
 
@@ -708,7 +743,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of beams' widths along global y-axis.
+            Maximum of beam section widths (view along y or in xz-plane).
         """
         bby = 0.0
         if self.design.right_beam:
@@ -723,7 +758,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of beams' heights along global x-axis.
+            Maximum of beam section heights (view along x or in yz-plane).
         """
         hx = 0.0
         if self.design.left_beam:
@@ -739,7 +774,7 @@ class FloorJoint(StairsJoint):
         Returns
         -------
         float
-            Maximum of beams' heights along global y-axis.
+            Maximum of beam section heights (view along y or in xz-plane).
         """
         hy = 0.0
         if self.design.rear_beam:
@@ -754,93 +789,31 @@ class FloorJoint(StairsJoint):
 
         Returns
         -------
-        krot_x : float
-            Stiffness of elastic spring representing rotational behaviour
-            around global-x.
         krot_y : float
             Stiffness of elastic spring representing rotational behaviour
             around global-y.
+        krot_x : float
+            Stiffness of elastic spring representing rotational behaviour
+            around global-x.
+
+        TODO
+        ----
+        Even though original implementation by Gerard O'Reilly used the
+        expression for interior joints, I believe this was done for the
+        sake of simplicity. Let's just use the corresponding equations.
         """
-        # CONSTANTS
-        KAPPA_EXT = 0.135
-        """Proposed shear strength coefficients for cracking limit state
-        in exterior joints (Table 2.4. in O'Reilly, 2016)."""
-        KAPPA_INT = 0.29
-        """Proposed shear strength coefficients for cracking limit state
-        in interior joints (Table 2.8. in O'Reilly, 2016)."""
-        # Principle tensile stress values  (Equation 2.34)
-        pt_ext = KAPPA_EXT * (self.fcm**0.5)
-        pt_int = KAPPA_INT * (self.fcm**0.5)
-        GAMMA_EXT = 0.0002
-        """Proposed shear deformations value for cracking limit state
-        in exterior joints (Table 2.5. in O'Reilly, 2016)."""
-        GAMMA_INT = 0.0002
-        """Proposed shear deformations value for cracking limit state
-        in interior joints (Table 2.9. in O'Reilly, 2016)."""
+        # Get the hysteretic material inputs
+        inputs_rot_y, inputs_rot_x = self._get_inelastic_joint_params()
 
-        # Joint width definition Equation 2.48 (O'Reilly, 2016)
-        # TODO: The original code was using initial beam width for bb values
-        # X direction
-        if self.bc_x >= self.bb_x:
-            bj_x = min(self.bc_x, self.bb_x + 0.5*self.hc_x)
-        else:
-            bj_x = min(self.bb_x, self.bc_x + 0.5*self.hc_x)
-        # Y direction
-        if self.bc_y >= self.bb_y:
-            bj_y = min(self.bc_y, self.bb_y + 0.5*self.hc_y)
-        else:
-            bj_y = min(self.bb_y, self.bc_y + 0.5*self.hc_y)
-
-        # Lever arm, i.e., distance between comp. and tens. forces
-        jd_x = 0.9 * (0.9 * self.hb_x)
-        jd_y = 0.9 * (0.9 * self.hb_y)
-
-        if self.category in ['exterior', 'roof']:  # Exterior or roof joint
-            # TODO: Reference? This is different than equation 2.33.
-            # Also, why is it the same for roof and exterior in elastic model?
-            Mj_x = (pt_ext * bj_x * self.hc_x) * \
-                (self.hstorey * jd_x) / (self.hstorey - jd_x) * \
-                (1 + (self.axial_force / (pt_ext * bj_x * self.hc_x)))**0.5
-            # Mj_x = (pt_ext * bj_x * self.hc_x) * \
-            #     (self.hstorey * jd_x) / (self.hstorey - jd_x) * (
-            #         (self.hb_x / (2*self.hc_x)) + (
-            #             (self.hb_x / (2*self.hc_x))**2 +
-            #             1 +
-            #             (self.axial_load / (pt_ext * bj_x * self.hc_x))
-            #         )**0.5
-            #      )
-            Mj_y = (pt_ext * bj_y * self.hc_y) * \
-                (self.hstorey * jd_y) / (self.hstorey - jd_y) * \
-                (1 + (self.axial_force / (pt_ext * bj_y * self.hc_y)))**0.5
-            # Mj_y = (pt_ext * bj_y * self.hc_y) * \
-            #     (self.hstorey * jd_y) / (self.hstorey - jd_y) * (
-            #         (self.hb_y / (2*self.hc_y)) + (
-            #             (self.hb_y / (2*self.hc_y))**2 +
-            #             1 +
-            #             (self.axial_load / (pt_ext * bj_y * self.hc_y))
-            #         )**0.5
-            #      )
-            # Elastic rotational stiffness values
-            krot_x = Mj_x / GAMMA_EXT  # rotation round global-x
-            krot_y = Mj_y / GAMMA_EXT  # rotation round global-y
-
-        elif self.category == 'interior':  # Interior joint
-            # Equation 2.55 (O'Reilly, 2016)
-            Mj_x = (pt_int * bj_x * self.hc_x) * \
-                (self.hstorey * jd_x) / (self.hstorey - jd_x) * \
-                (1 + (self.axial_force / (pt_int * bj_x * self.hc_x)))**0.5
-            Mj_y = (pt_int * bj_y * self.hc_y) * \
-                (self.hstorey * jd_y) / (self.hstorey - jd_y) * \
-                (1 + (self.axial_force / (pt_int * bj_y * self.hc_y)))**0.5
-            # Elastic rotational stiffness values
-            krot_x = Mj_x / GAMMA_INT  # rotation round global-x
-            krot_y = Mj_y / GAMMA_INT  # rotation round global-y
+        # Compute elastic stiffness values
+        krot_y = inputs_rot_y[0] / inputs_rot_y[1]
+        krot_x = inputs_rot_x[0] / inputs_rot_x[1]
 
         # Rounding to precision
-        krot_x = round(float(krot_x), PRECISION)
         krot_y = round(float(krot_y), PRECISION)
+        krot_x = round(float(krot_x), PRECISION)
 
-        return krot_x, krot_y
+        return krot_y, krot_x
 
     def _get_inelastic_joint_params(self) -> Tuple[List[float], List[float]]:
         """Gets the material properties for inelastic joint behaviour, i.e.,
@@ -848,89 +821,63 @@ class FloorJoint(StairsJoint):
 
         Returns
         -------
-        rotx_mat_inputs : List[float]
-            List of inputs for the material representing rotational behaviour
-            around global x-axis.
         roty_mat_inputs : List[float]
             List of inputs for the material representing rotational behaviour
             around global y-axis.
+        rotx_mat_inputs : List[float]
+            List of inputs for the material representing rotational behaviour
+            around global x-axis.
+
+        Notes
+        -----
+        The constants slightly different than those in the references.
+        The new calibrated values were directly provided by Gerard O'Reilly.
+
+        TODO
+        ----
+        Due to the lack of data, equation described for roof was not validated.
+        However, we rarely except nonlinearity for joints at the last floor.
+        So, this has the least significance. Let's keep using it for now?
         """
-        # # TODO: Original constants from O'Reilly (2016)
-        # KAPPA_EXT = [0.135, 0.135, 0.05]
-        # """Proposed shear strength coefficients for each limit state
-        # (Cracking, Peak, Ultimate) in exterior joints
-        # (Table 2.4. in O'Reilly, 2016)."""
-        # KAPPA_INT = [0.29, 0.42]
-        # """Proposed shear strength coefficients for each limit state
-        # (Cracking, Peak) in interior joints (Table 2.8. in O'Reilly, 2016).
-        # """
-        # GAMMA_EXT = [0.0002, 0.0127, 0.0261]
-        # """Proposed shear deformations values for each limit state
-        # in exterior joints (Table 2.5. in O'Reilly, 2016)."""
-        # GAMMA_INT = [0.0002, 0.0085]
-        # """Proposed (O'Reilly, 2016) shear deformations values for each limit
-        # state in interior joints (Table 2.9. in O'Reilly, 2016)."""
-        # HYST_PARAM_EXT = [0.6, 0.2, 0.0, 0.0, 0.3]
-        # """Calibrated parameters for the interior joint hysteretic material
-        # model (pinchx, pinchy, damage1, damage2, beta). Taken from Table 2.6
-        # in O'Reilly (2016)."""
-        # HYST_PARAM_INT = [0.6, 0.2, 0.0, 0.01, 0.3]
-        # """Calibrated parameters for the exterior joint hysteretic material
-        # model (pinchx, pinchy, damage1, damage2, beta). Taken from
-        # Table 2.10 in O'Reilly (2016)."""
+        # Shear deformations for each limit state: cracking, peak, ultimate
+        gamma_int = 2 * [0.0002, 0.0090, 0.0200]
+        gamma_ext = 2 * [0.0002, 0.0132, 0.0270]
+        gamma_roof = 2 * [0.0002, 0.0132, 0.0270]
+        # Shear strength coefficients for each LS: cracking, peak, ultimate
+        kappa_int = 2 * [0.29, 0.42, 0.42]
+        kappa_ext = 2 * [0.132, 0.132, 0.053]
+        kappa_roof = 2 * [0.132, 0.132, 0.053]
+        # Hysteretic parameters (pinchx, pinchy, damage1, damage2, beta)
+        if 'exterior' in [self.category_x, self.category_y] \
+           or 'roof' in [self.category_x, self.category_y]:
+            hyst_params = [0.6, 0.2, 0.0, 0.0, 0.3]  # exterior or roof joint
+        else:
+            hyst_params = [0.6, 0.2, 0.0, 0.01, 0.3]  # interior joint
 
-        # Constants from the original code
-        # Shear deformations values for each limit state in all joints
-        # TODO: This gamma values are different than those in O'Reilly 2016
-        # Also why it is not symmetric?
-        GAMMA_EXT = [0.0002, 0.0132, 0.020, 0.0002, 0.0127, 0.020]
-        GAMMA_INT = [0.0002, 0.0132, 0.020, 0.0002, 0.0127, 0.020]
-        HYST_PARAM_EXT = [0.0, 0.0, 0.0, 0.0, 0.0]
-        """Hysteretic material parameters for the interior joint
-        (pinchx, pinchy, damage1, damage2, beta)."""
-        HYST_PARAM_INT = [0.0, 0.0, 0.0, 0.0, 0.0]
-        """Hysteretic material parameters for the interior joint
-        (pinchx, pinchy, damage1, damage2, beta)."""
-        KAPPA_EXT = [0.135, 0.135, 0.05, 0.135, 0.135, 0.05]
-        """Proposed shear strength coefficients for each limit state
-        (Cracking, Peak, Ultimate) in exterior joints
-        (Table 2.4. in O'Reilly, 2016)."""
-        KAPPA_INT = [0.29, 0.42, 0.42, 0.29, 0.42, 0.42]
-        """Proposed shear strength coefficients for each limit state
-        (Cracking, Peak) in interior joints
-        (Table 2.8. in O'Reilly, 2016)."""
-
-        # Principle tensile stress values  (Equation 2.34)
-        pt_ext = np.array(KAPPA_EXT) * (self.fcm**0.5)
-        pt_int = np.array(KAPPA_INT) * (self.fcm**0.5)
+        # Principle tensile stress values Equation 2.34 (O'Reilly, 2016)
+        pt_ext = np.array(kappa_ext) * (self.fcm**0.5)
+        pt_int = np.array(kappa_int) * (self.fcm**0.5)
+        pt_roof = np.array(kappa_roof) * (self.fcm**0.5)
 
         # Joint width definition Equation 2.48 (O'Reilly, 2016)
-        # TODO: The original code was using initial beam width for bb values
-        # X direction
-        if self.bc_x >= self.bb_x:
-            bj_x = min(self.bc_x, self.bb_x + 0.5*self.hc_x)
-        else:
-            bj_x = min(self.bb_x, self.bc_x + 0.5*self.hc_x)
         # Y direction
         if self.bc_y >= self.bb_y:
             bj_y = min(self.bc_y, self.bb_y + 0.5*self.hc_y)
         else:
             bj_y = min(self.bb_y, self.bc_y + 0.5*self.hc_y)
+        # X direction
+        if self.bc_x >= self.bb_x:
+            bj_x = min(self.bc_x, self.bb_x + 0.5*self.hc_x)
+        else:
+            bj_x = min(self.bb_x, self.bc_x + 0.5*self.hc_x)
 
         # Lever arm, i.e., distance between comp. and tens. forces
-        jd_x = 0.9 * (0.9 * self.hb_x)
         jd_y = 0.9 * (0.9 * self.hb_y)
+        jd_x = 0.9 * (0.9 * self.hb_x)
 
-        if self.category == 'exterior':  # Exterior joint
+        # Stress and strain values for material around global-y
+        if self.category_y == 'exterior':  # Exterior joint
             # Equation 2.33 (O'Reilly, 2016)
-            Mj_x = (pt_ext * bj_x * self.hc_x) * \
-                (self.hstorey * jd_x) / (self.hstorey - jd_x) * (
-                    (self.hb_x / (2*self.hc_x)) + (
-                        (self.hb_x / (2*self.hc_x))**2 +
-                        1 +
-                        (self.axial_force / (pt_ext * bj_x * self.hc_x))
-                    )**0.5
-                 )
             Mj_y = (pt_ext * bj_y * self.hc_y) * \
                 (self.hstorey * jd_y) / (self.hstorey - jd_y) * (
                     (self.hb_y / (2*self.hc_y)) + (
@@ -940,66 +887,80 @@ class FloorJoint(StairsJoint):
                     )**0.5
                  )
             # Strain values
-            gamma = GAMMA_EXT
-            # Other params (pinchx, pinchy, damage1, damage2, beta)
-            hyst_params = HYST_PARAM_EXT
+            gamma_y = gamma_ext.copy()
 
-        elif self.category == 'roof':  # Exterior joint
-            # TODO: Reference? This is slightly different than Equation 2.33
-            Mj_x = (pt_ext * bj_x * self.hc_x) * jd_x * (
+        elif self.category_y == 'interior':  # Interior joint
+            # Equation 2.55 (O'Reilly, 2016)
+            Mj_y = (pt_int * bj_y * self.hc_y) * \
+                (self.hstorey * jd_y) / (self.hstorey - jd_y) * \
+                (1 + (self.axial_force / (pt_int * bj_y * self.hc_y)))**0.5
+            # Strain values
+            gamma_y = gamma_int.copy()
+
+        elif self.category_y == 'roof':  # Roof joint
+            # This equation comes from the model online.
+            Mj_y = 2 * (pt_roof * bj_y * self.hc_y) * jd_y * (
+                    (self.hb_y / (2*self.hc_y)) + (
+                        (self.hb_y / (2*self.hc_y))**2 +
+                        1 +
+                        (self.axial_force / (pt_roof * bj_y * self.hc_y))
+                    )**0.5
+                 )
+            # Strain values
+            gamma_y = gamma_roof.copy()
+
+        # Stress and strain values for material around global-x
+        if self.category_x == 'exterior':  # Exterior joint
+            # Equation 2.33 (O'Reilly, 2016)
+            Mj_x = (pt_ext * bj_x * self.hc_x) * \
+                (self.hstorey * jd_x) / (self.hstorey - jd_x) * (
                     (self.hb_x / (2*self.hc_x)) + (
                         (self.hb_x / (2*self.hc_x))**2 +
                         1 +
                         (self.axial_force / (pt_ext * bj_x * self.hc_x))
                     )**0.5
                  )
-            Mj_y = (pt_ext * bj_y * self.hc_y) * jd_y * (
-                    (self.hb_y / (2*self.hc_y)) + (
-                        (self.hb_y / (2*self.hc_y))**2 +
-                        1 +
-                        (self.axial_force / (pt_ext * bj_y * self.hc_y))
-                    )**0.5
-                 )
             # Strain values
-            gamma = GAMMA_EXT
-            # Other params (pinchx, pinchy, damage1, damage2, beta)
-            hyst_params = HYST_PARAM_EXT
+            gamma_x = gamma_ext.copy()
 
-        elif self.category == 'interior':  # Interior joint
+        elif self.category_x == 'interior':  # Interior joint
             # Equation 2.55 (O'Reilly, 2016)
             Mj_x = (pt_int * bj_x * self.hc_x) * \
                 (self.hstorey * jd_x) / (self.hstorey - jd_x) * \
                 (1 + (self.axial_force / (pt_int * bj_x * self.hc_x)))**0.5
-            Mj_y = (pt_int * bj_y * self.hc_y) * \
-                (self.hstorey * jd_y) / (self.hstorey - jd_y) * \
-                (1 + (self.axial_force / (pt_int * bj_y * self.hc_y)))**0.5
             # Strain values
-            gamma = GAMMA_INT
-            # Other params (pinchx, pinchy, damage1, damage2, beta)
-            hyst_params = HYST_PARAM_INT
+            gamma_x = gamma_int.copy()
 
-        # Stress and strain values for hysteretic material
-        # TODO: Why do we apply factor of 1.1?
-        Mj_x[1] = 1.1 * Mj_x[1]
-        Mj_x[4] = 1.1 * Mj_x[4]
-        Mj_y[1] = 1.1 * Mj_y[1]
-        Mj_y[4] = 1.1 * Mj_y[4]
-        # Inputs for material representing rotational behaviour around global-x
-        rotx_mat_inputs = []
+        elif self.category_x == 'roof':  # Exterior joint
+            # This equation comes from the model online.
+            Mj_x = 2 * (pt_roof * bj_x * self.hc_x) * jd_x * (
+                    (self.hb_x / (2*self.hc_x)) + (
+                        (self.hb_x / (2*self.hc_x))**2 +
+                        1 +
+                        (self.axial_force / (pt_roof * bj_x * self.hc_x))
+                    )**0.5
+                 )
+            # Strain values
+            gamma_x = gamma_roof.copy()
+
         # Inputs for material representing rotational behaviour around global-y
         roty_mat_inputs = []
+        # Inputs for material representing rotational behaviour around global-x
+        rotx_mat_inputs = []
         for i in range(6):
             if i < 3:
-                rotx_mat_inputs.extend([Mj_x[i], gamma[i]])
-                roty_mat_inputs.extend([Mj_y[i], gamma[i]])
+                roty_mat_inputs.extend([Mj_y[i], gamma_y[i]])
+                rotx_mat_inputs.extend([Mj_x[i], gamma_x[i]])
             else:
-                rotx_mat_inputs.extend([-Mj_x[i], -gamma[i]])
-                roty_mat_inputs.extend([-Mj_y[i], -gamma[i]])
-        rotx_mat_inputs.extend(hyst_params)
+                roty_mat_inputs.extend([-Mj_y[i], -gamma_y[i]])
+                rotx_mat_inputs.extend([-Mj_x[i], -gamma_x[i]])
+
+        # Add hysteretic parameters
         roty_mat_inputs.extend(hyst_params)
+        rotx_mat_inputs.extend(hyst_params)
 
         # Rounding to precision
-        rotx_mat_inputs = round_list(convert_numpy_types(rotx_mat_inputs))
         roty_mat_inputs = round_list(convert_numpy_types(roty_mat_inputs))
+        rotx_mat_inputs = round_list(convert_numpy_types(rotx_mat_inputs))
 
-        return rotx_mat_inputs, roty_mat_inputs
+        return roty_mat_inputs, rotx_mat_inputs

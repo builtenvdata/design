@@ -212,7 +212,7 @@ class Column(ColumnBase):
             Vx9=max(max_values[9], abs(min_values[9])),
         )
 
-    def predesign(self) -> None:
+    def predesign_section_dimensions(self) -> None:
         """Does preliminary design of column.
         This method makes initial guess for section dimensions.
         """

@@ -24,13 +24,6 @@ z
     |            |    |
     --------------    ----
     |---- b -----|
-
-TODO
-----
-What is the point of maximum wide beam width for dimension increase?
-Can't we just have overall maximum width to change all beam types.
-This can be checked later? See BeamBase.increase_dimensions method
-see Design.py Line 78 and __init__.py lines 171, 186 in the original code.
 """
 
 # Imports from installed packages

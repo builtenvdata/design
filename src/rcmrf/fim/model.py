@@ -2118,7 +2118,7 @@ class FIM:
 
     def plot_model(
         self, show_nodes: Literal['no', 'yes'] = 'yes', line_width: float = 3,
-        directory: Optional[str | Path] = None
+        directory: Optional[str | Path] = None, show: bool = True
     ) -> None:
         """
         Plots the structural model, showing nodes and elements grouped by type
@@ -2135,6 +2135,9 @@ class FIM:
         directory : str | Path | None, optional
             Directory to save an image of the model. If None, the image will
             not be saved. By default None.
+        show : bool, optional
+                Flag for showing the figure in an interactive window,
+                by default True.
         """
         # Set the group elements
         rigid = []
@@ -2156,13 +2159,13 @@ class FIM:
         else:
             filename = None
         # Plot the model
-        pl.plot_model(show_nodes=show_nodes, ele_groups=groups,
+        pl.plot_model(show_nodes=show_nodes, ele_groups=groups, show=show,
                       line_width=line_width, filename=filename)
 
     def plot_mode_shape(
         self, mode_number: int = 1, scale: float = 100, line_width: float = 3,
         contour: Optional[Literal['x', 'y', 'z']] = None,
-        directory: Optional[str | Path] = None
+        directory: Optional[str | Path] = None, show: bool = True
     ) -> None:
         """
         Plots the mode shape of the structure for a given mode number,
@@ -2185,6 +2188,9 @@ class FIM:
         directory : str | Path | None, optional
             Directory to save an image of the model. If None, the image will
             not be saved. By default None.
+        show : bool, optional
+                Flag for showing the figure in an interactive window,
+                by default True.
         """
         # Build the model
         self.build()
@@ -2196,5 +2202,5 @@ class FIM:
         # Plot the mode shape
         pl.plot_mode_shape(
             mode_number=mode_number, scale=scale, line_width=line_width,
-            contour=contour, filename=filename
+            contour=contour, filename=filename, show=show
         )
