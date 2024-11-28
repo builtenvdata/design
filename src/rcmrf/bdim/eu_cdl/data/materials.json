@@ -1,0 +1,14 @@
+{
+    "concrete" :
+    [
+        {"grade": "C14", "fck": 14, "fck_cube": 180, "fcd": 7.0, "fcd_eq": 10.5},
+        {"grade": "C19", "fck": 19, "fck_cube": 225, "fcd": 8.5, "fcd_eq": 12.75},
+        {"grade": "C25", "fck": 25, "fck_cube": 300, "fcd": 11.5, "fcd_eq": 17.5}
+    ],
+    "steel" :
+    [
+        {"grade": "S240", "fsyk": 240, "fsyd": 140, "fsyd_eq": 240},
+        {"grade": "S400", "fsyk": 400, "fsyd": 240, "fsyd_eq": 400},
+        {"grade": "S500", "fsyk": 500, "fsyd": 300, "fsyd_eq": 500}
+    ]
+}

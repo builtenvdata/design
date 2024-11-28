@@ -1,0 +1,8 @@
+openseespy
+scipy
+pandas  # pandas[all] is also an option but it gets very big.
+pyarrow  # to avoid depreciated warning
+openpyxl  # for pandas
+pyvista[all]
+pydantic
+pytest
