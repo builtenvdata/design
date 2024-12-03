@@ -34,10 +34,10 @@ if __name__ == '__main__':
         "concrete_grade": "C19",
         "design_class": "eu_cdl",
         "quality": 1,
-        "slab_orient": 3,
-        "slab_thickness": 0.15,
+        # "slab_orient": 3,
+        # "slab_thickness": 0.15,
         "slab_type": 1,
-        "staircase_slab_depth": 0.15,
+        # "staircase_slab_depth": 0.15,
         "steel_grade": "S400",
         "geometry": custom_frame
     }
@@ -66,9 +66,9 @@ if __name__ == '__main__':
                         directory=outdir_building)
     # Perform the pushover directly
     push_dir = outdir_building / 'NSPA-Results-X'
-    dx, vx = fim.do_nspa(ctrl_dof=1, out_dir=push_dir)
+    dx, vx, _ = fim.do_nspa(ctrl_dof=1, out_dir=push_dir)
     push_dir = outdir_building / 'NSPA-Results-Y'
-    dy, vy = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
+    dy, vy, _ = fim.do_nspa(ctrl_dof=2, out_dir=push_dir)
     plt.plot(dx, vx, label='X-dir')
     plt.plot(dy, vy, label='Y-dir')
     plt.xlabel("Control Node Displacement [m]")
