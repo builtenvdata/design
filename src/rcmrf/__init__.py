@@ -1,12 +1,11 @@
-# flake8: noqa
 from typing import Dict, Literal, Tuple, List
 from pathlib import Path
 
 from .bcim import BCIM
-from .bdim import BDIM, TaxonomyData
+from .bdim import BDIM, TaxonomyData  # noqa
 from .bdim.model import BuildingBase
 from .fim import FIM
-from .geometry import (
+from .geometry import (  # noqa
     StandardFrame as StandardGeometry,
     CustomFrame as CustomGeometry
 )
@@ -43,7 +42,7 @@ def generate(
     ------
     KeyError
         `inputs['bcim']['design_class']` is not specified.
-        
+
     Example Inputs
     --------------
     >>> inputs = {
@@ -59,7 +58,10 @@ def generate(
                     "lower_bound": 2.3,
                     "upper_bound": 3.8,
                 },
-                "staircase_bay_width": {"lower_bound": 2.8, "upper_bound": 3.2},
+                "staircase_bay_width": {
+                    "lower_bound": 2.8,
+                    "upper_bound": 3.2
+                },
                 "standard_bay_width": {
                     "corr_coeff_xy": -0.92,
                     "lower_bound_x": 3.5,
@@ -71,7 +73,10 @@ def generate(
                     "theta_y": 4.5,
                     "sigma_y": 0.35,
                 },
-                "steel": {"tag": ["S400", "S500"], "probability": [0.10, 0.90]},
+                "steel": {
+                    "tag": ["S400", "S500"],
+                    "probability": [0.10, 0.90]
+                },
                 "concrete": {
                     "tag": ["C20", "C25", "C30", "C35"],
                     "probability": [0.30, 0.45, 0.20, 0.05],
@@ -82,15 +87,16 @@ def generate(
                     "probability": [0.55, 0.10, 0.20, 0.10, 0.05],
                 },
                 "construction_quality": {"probability": [0.6, 0.3, 0.1]},
-                "slab_properties": {
-                    "one_to_one_and_comp_ratio": 0.50,
-                    "two_to_two_and_comp_ratio": 0.65,
-                    "max_solid_length": 6.0,
-                    "max_thickness": 0.85,
+                "slab_typology": {
+                    "ss1_prob_given_ss1_or_hs": 0.50,
+                    "ss2_prob_given_ss2_or_hs": 0.65,
+                    "upper_lim_for_min_ss_span_length": 6.0,
+                    "upper_lim_for_max_ss2_span_ratio": 2.0,
                     "staircase_slab_depth": 0.15,
+                    "floor_slab_thickness": 0.15
                 },
-                "composite_slab_wb_ratio": 0.50,
-                "square_column_ratio": 0.50,
+                "wb_prob_given_hs": 0.50,
+                "square_column_prob": 0.50,
                 "layout": "all",  # Considered layouts
                 "seed": 1993  # Seed number for sampling
             },
@@ -104,7 +110,7 @@ def generate(
             }
         }
     """
-    
+
     # Get bcim generation settings
     bcim_inputs = inputs.get('bcim')
     if not bcim_inputs or not bcim_inputs.get('design_class'):
@@ -117,7 +123,7 @@ def generate(
         fim_inputs = {}
     elif fim_inputs.get('opensees'):
         lang = fim_inputs.pop('opensees')
-    
+
     # Create output directory
     if outdir is None:
         outdir = Path.cwd() / 'Outputs'
@@ -129,7 +135,7 @@ def generate(
     make_dir(outdir)
     make_dir(bdim_path)
     make_dir(fim_path)
-    
+
     # Initialize BCIM
     bcim = BCIM()
     # Generate a building portfolio
@@ -173,5 +179,5 @@ def generate(
             fim.append(None)
     # Save bcim information
     bcim.to_csv(bcim_path)
-    
+
     return bcim, bdim, fim

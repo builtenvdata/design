@@ -642,7 +642,10 @@ class FIM:
             if ok == 0 and cont:
                 base_shear.append(current_shear)
                 ctrl_disp.append(current_disp)
-            elif base_shear[-1] / max(base_shear) > 0.8:
+            elif (
+                max(base_shear) == 0.0 or  # Analysis did not even start
+                base_shear[-1] / max(base_shear) > 0.8  # Not good enough
+            ):
                 ok = -1
 
         # Wipe the numerical model

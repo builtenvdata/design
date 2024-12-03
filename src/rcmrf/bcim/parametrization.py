@@ -4,14 +4,14 @@ Pydantic models used for parametrizing BCIM inputs.
 
 # Imports from installed packages
 from pydantic import BaseModel
-from typing import List, Union, Literal
+from typing import List, Union, Literal, Optional
 
 
 class GroundStoreyHeight(BaseModel):
     """Parameters used to define ground storey heights.
 
     Sampled typical storey heights are factored by the `factor` based on their
-    `probability` to obtain ground storey heights.  If the factored storey
+    `probability` to obtain ground storey heights. If the factored storey
     height is larger than `maximum` it will be set to `maximum`.
 
     Attributes
@@ -55,52 +55,50 @@ class ConstructionQuality(BaseModel):
     """Probability values for each quality ID."""
 
 
-class SlabProperty(BaseModel):
-    """Extra parameters required in slab property sampling.
+class SlabTypology(BaseModel):
+    """Parameters required for slab typology sampling or decision tree.
 
     Attributes
     ----------
-    one_to_one_and_comp_ratio : float
-        Ratio of the number of buildings with one-way solid slabs to
-        the total number of buildings with one-way solid or composite
-        slabs when:
-            minimum span length <= `max_solid_length` and
-            max-min span length ratio >= 2.0
-        Should be less than 1.0.
-    two_to_two_and_comp_ratio : float
-        Ratio of number of buildings with two-way solid slabs to
-        the total number of buildings with two-way solid or one-way
-        composite slabs when:
-            minimum span length <= `max_solid_length` and
-            max-min span length ratio < 2.0
-        Should be less than 1.0.
-    max_thickness : float
-        Maximum possible slab thickness.
-    max_solid_length : float
-        Maximum possible length of solid slabs (type 1 and 2).
-    staircase_slab_depth: float
-       Depth of the slabs of the staircase.
+    ss1_prob_given_ss1_or_hs : float
+        Probability of having SS1 type slab given that the slab type
+        is either SS1 or HS.
+    ss2_prob_given_ss2_or_hs : float
+        Probability of having SS2 type slab given that the slab type
+        is either SS2 or HS.
+    upper_lim_for_min_ss_span_length : float
+        Upper limit for the minimum span length in solid slabs (SS1, SS2).
+    upper_lim_for_max_ss2_span_ratio : float
+        Upper limit for the ratio of maximum to minimum span lengths in
+        SS2 slabs.
+    staircase_slab_depth: float | None
+       Depth of the staircase slabs, by default None.
+    floor_slab_thickness: float | None
+       Depth of the floor slabs, by default None.
+
+    Notes
+    -----
+    1. SS2 refers to solid two-way cast-in-situ slabs.
+    2. SS1 refers to solid one-way cast-in-situ slabs.
+    3. HS refers to composite slabs with pre-fabricated joists and ceramic
+    blocks.
     """
-    one_to_one_and_comp_ratio: float
-    """Ratio of the number of buildings with one-way solid slabs to
-    the total number of buildings with one-way solid or composite
-    slabs when:
-        minimum span length <= `max_solid_length` and
-        max-min span length ratio >= 2.0
-    Should be less than 1.0."""
-    two_to_two_and_comp_ratio: float
-    """Ratio of number of buildings with two-way solid slabs to
-    the total number of buildings with two-way solid or one-way
-    composite slabs when:
-        minimum span length <= `max_solid_length` and
-        max-min span length ratio < 2.0
-    Should be less than 1.0."""
-    max_thickness: float
-    """Maximum possible slab thickness."""
-    max_solid_length: float
-    """Maximum possible length of solid slabs (type 1 and 2)."""
-    staircase_slab_depth: float
-    """Depth of the slabs of the staircase."""
+    ss1_prob_given_ss1_or_hs: float
+    """Probability of having SS1 type slab given that the slab type
+    is either SS1 or HS."""
+    ss2_prob_given_ss2_or_hs: float
+    """Probability of having SS2 type slab given that the slab type
+    is either SS2 or HS."""
+    upper_lim_for_min_ss_span_length: float = 6.0
+    """Upper limit for the minimum span length in solid slabs (SS1, SS2),
+    by default 6.0 meters."""
+    upper_lim_for_max_ss2_span_ratio: float = 2.0
+    """Upper limit for the ratio of maximum to minimum span lengths in
+    SS2 slabs, by default 2.0"""
+    staircase_slab_depth: Optional[float] = None
+    """Depth of the staircase slabs, by default None."""
+    floor_slab_thickness: Optional[float] = None
+    """Thickness of the floor slabs, by default None."""
 
 
 class TypicalStoreyHeight(BaseModel):
@@ -216,70 +214,71 @@ class InputData(BaseModel):
     Attributes
     ----------
     typical_storey_height : TypicalStoreyHeight
-        Parameters representing the typical storey height distribution.
+        Parameters required for sampling typical storey heights.
     staircase_bay_width : StaircaseBayWidth
-        Parameters representing the staircase bay width distribution.
+        Parameters required for sampling staircase bay widths.
     standard_bay_width : StandardBayWidth
-        Parameters representing the standard bay width distribution.
+        Parameters required for sampling standard bay widths.
     steel : Material
-        Steel grades and their occurrence probabilities.
+        Parameters required for sampling steel grades.
     concrete : Material
-        Concrete strength classes and their occurrence probabilities.
+        Parameters required for sampling concrete grades.
     ground_storey_height : GroundStoreyHeight
-        Parameters defining ground storey heights.
+        Parameters required for ground storey height sampling or decision tree
+        operations.
     construction_quality : ConstructionQuality
-        IDs and occurrence probabilities for construction quality.
-    slab_properties : SlabProperty
-        Extra parameters required in slab property sampling.
-    composite_slab_wb_ratio : float
-        Ratio of number of buildings with composite slab that have wide
-        beams to the total number of buildings with composite slab.
-    square_column_ratio : float
-        Ratio of square columns in the sample.
-    layout : Literal["all"] | List[str]
-        Layout options for the building generation process.
-        It can be either "all" or a list of specific layout.
+        Parameters required for sampling construction quality levels.
+    slab_typology : SlabTypology
+        Parameters required for slab typology sampling or decision tree
+        operations.
+    wb_prob_given_hs : float
+        Probability of having wide beams (WB) given the slab type is HS.
+    square_column_prob : float
+        Probability of having square columns.
+    layout : Union[Literal["all"], List[str]]
+        Layout IDs considered for the building generation process.
+        It can be either "all" to include all layouts or a list of specific
+        layouts.
     beta : float
         Design lateral load factor.
     num_storeys : int
-        Number of storeys.
+        Number of storeys in the building.
     design_class : str
-        Building design class.
-    sample_size: int
-        Size of the generate sample.
-    seed: int
-        Seed used in random number generator.
+        Building seismic design class.
+    sample_size : int
+        Size of the sample to be generated.
+    seed : int
+        Seed value for the random number generator to ensure reproducibility.
     """
     typical_storey_height: TypicalStoreyHeight
-    """Parameters representing the typical storey height distribution."""
+    """Parameters required for typical storey height sampling."""
     staircase_bay_width: StaircaseBayWidth
-    """Parameters representing the staircase bay width distribution."""
+    """Parameters required for staircase storey height sampling."""
     standard_bay_width: StandardBayWidth
-    """Parameters representing the standard bay width distribution."""
+    """Parameters required for standard bay width sampling."""
     steel: Material
-    """Steel grades and their occurrence probabilities."""
+    """Parameters required for steel grade sampling."""
     concrete: Material
-    """Concrete strength classes and their occurrence probabilities."""
+    """Parameters required for concrete grade sampling."""
     ground_storey_height: GroundStoreyHeight
-    """Parameters defining ground storey heights."""
+    """Parameters required for ground storey height sampling/decision tree."""
     construction_quality: ConstructionQuality
-    """IDs and occurrence probabilities for construction quality."""
-    slab_properties: SlabProperty
-    """Extra parameters required in slab property sampling."""
-    composite_slab_wb_ratio: float
-    """Ratio of number of buildings with composite slab that have wide
-    beams to the total number of buildings with composite slab."""
-    square_column_ratio: float
-    """Ratio of square columns in the sample."""
+    """Parameters required for sampling construction quality levels."""
+    slab_typology: SlabTypology
+    """Parameters required for slab typology sampling/decision tree."""
+    wb_prob_given_hs: float
+    """Probability of having wide beams (WB) given slab type is HS."""
+    square_column_prob: float
+    """Probability of having square columns."""
     layout: Union[Literal["all"], List[str]]
-    """Layout options for the building generation process.
+    """Layout considered layout ids for the building generation process.
     It can be either "all" or a list of specific layout."""
     beta: float
     """Design lateral load factor."""
     num_storeys: int
     """Number of storeys."""
     design_class: str
-    """Building design class."""
+    """Building seismic design class."""
     sample_size: int
     """Size of the generate sample."""
     seed: int

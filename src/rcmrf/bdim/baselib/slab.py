@@ -39,8 +39,6 @@ class SlabBase(ABC):
 
     Must be inherited by design class specific slabs.
     """
-    t: float
-    """Slab thickness (depth)."""
     rectangle: Rectangle
     """Geometric mesh representation of the slab (tag, points, lines)."""
     typology: Literal[1, 2, 3]
@@ -51,6 +49,8 @@ class SlabBase(ABC):
     pre-stressed beams."""
     __orientation: Literal[1, 2, 3]
     """Private attribute for slab unloading orientation."""
+    __thickness: float
+    """Private attribute for slab thickness (depth)."""
     gamma_rc: float
     """Unit weight of reinforced concrete."""
     pg: float
@@ -59,10 +59,12 @@ class SlabBase(ABC):
     """Variable loads on unit slab area."""
     roof: bool
     """Flag for checking if located at roof level or not."""
+    MAX_THICKNESS: float = 0.85
+    """Maximum possible slab thickness, by default 0.85 m."""
 
     def __init__(
         self, rectangle: Rectangle, typology: Literal[1, 2, 3],
-        thickness: float, orientation: Literal[1, 2, 3] = None
+        thickness: float = None, orientation: Literal[1, 2, 3] = None
     ) -> None:
         """Initializes slab object.
 
@@ -72,12 +74,12 @@ class SlabBase(ABC):
             Geometric mesh representation of the slab (tag, points, lines).
         typology : Literal[1, 2, 3]
             Slab typology
-            1: Two-way solid slab.
-            2: One-way solid slab.
-            3: One-way composite slab with ceramic blocks and RC joists or
-            pre-stressed beams.
+            1: Solid two-way cast-in-situ slabs (SS2)
+            2: Solid one-way cast-in-situ slabs (SS1)
+            3: Composite slabs with pre-fabricated joists and ceramic blocks
+            (HS)
         thickness : float
-            Slab thickness (depth).
+            Slab thickness (depth), by default None.
         orientation : Literal[1, 2, 3], optional
             Orientation of slab load transfer to beams, by default None.
             1: Unloading in beams along X direction.
@@ -85,8 +87,8 @@ class SlabBase(ABC):
             3: Unloading in beams along both directions.
         """
         self.rectangle = rectangle
-        self.t = thickness
         self.typology = typology
+        self.__thickness = thickness
         self.__orientation = orientation
 
     @property
@@ -126,11 +128,15 @@ class SlabBase(ABC):
         -------
         float
             Slab self-weight per unit area.
+
+        References
+        ----------
+        http://www.presdouro.pt/12/pdf/DT_PD2016.pdf
         """
-        # Standard solid slab
+        # Solid cast-in-situ slab
         if self.typology == 1 or self.typology == 2:
             return self.gamma_rc * self.t
-        # Composite slabs ceramic blocks and pre-stressed joists
+        # Composite slab with pre-fabricated joists and ceramic blocks
         elif self.typology == 3:
             return 2.20 * np.log(self.t) + 6.50
 
@@ -167,6 +173,10 @@ class SlabBase(ABC):
             1: Unloading in beams along X direction.
             2: Unloading in beams along Y direction.
             3: Unloading in beams along both directions.
+
+        Notes
+        -----
+        One-way slab directions are always in the direction of the longer span.
         """
         if not self.__orientation:
             if self.typology == 1:
@@ -181,6 +191,35 @@ class SlabBase(ABC):
     def orientation(self, value=None) -> None:
         """Setter."""
         self.__orientation = value
+
+    @property
+    def t(self) -> float:
+        """
+        Returns
+        -------
+        float
+            Slab thickness (depth).
+
+        References
+        ----------
+        http://www.presdouro.pt/12/pdf/DT_PD2016.pdf
+        """
+        if not self.__thickness:
+            min_span_length = min(self.lx, self.ly)
+            if self.typology == 1 or self.typology == 2:
+                return min(
+                    round(100 * min_span_length/30) / 100,
+                    self.MAX_THICKNESS)
+            elif self.typology == 3:
+                return min(
+                    round(100 * (0.032 * min_span_length + 0.065)) / 100,
+                    self.MAX_THICKNESS)
+        return self.__thickness
+
+    @t.setter
+    def t(self, value=None) -> None:
+        """Setter."""
+        self.__thickness = value
 
     @property
     def beam_tributary_areas(self) -> List[float]:

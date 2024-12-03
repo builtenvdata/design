@@ -269,29 +269,21 @@ class BCIM:
         Ground storey height.
     slab_thickness: List[float]
         Slab thickness.
-    slab_type: List[Literal[1, 2, 3]]
-        Slab typology
-        1: Two-way solid slab.
-        2: One-way solid slab.
-        3: One-way composite slab with ceramic blocks and RC joists or
-        pre-stressed beams.
-    slab_orient: List[Literal[1, 2, 3]]
-        Slab unloading orientation
-        1: Unloading in beams along X direction.
-        2: Unloading in beams along Y direction.
-        3: Unloading in beams along both directions.
+        1: Two-way solid slab (SS2).
+        2: One-way solid slab (SS1).
+        3: Composite slabs with pre-fabricated joists and ceramic blocks (HS).
     beam_type: List[Literal[1, 2]]
         Beam typology
         1: Wide beams.
         2: Emergent beams.
     column_section: List[Literal[1, 2]]
         Column cross-section
-        1: square solid section.
-        2: rectangular solid section.
+        1: Square solid section.
+        2: Rectangular solid section.
     steel_mat_class: List[str]
-        Steel material class ID, e.g., S400.
+        Steel material class ID, or grade, e.g., 'S400'.
     concrete_mat_class: List[str]
-        Concrete material class ID, e.g., C20.
+        Concrete material class ID, or grade, e.g., 'C20'.
     quality: List[Literal[1, 2, 3]]
         Construction quality
         1: High quality.
@@ -333,7 +325,6 @@ class BCIM:
     to_csv
         Saves the generated BCIM data into the specified .csv file path.
 
-
     TODO
     ----
     Visualize available layouts.
@@ -358,20 +349,14 @@ class BCIM:
     """Typical storey height."""
     ground_storey_height: List[float]
     """Ground storey height."""
-    slab_thickness: List[float]
+    slab_thickness: List[float | None]
     """Slab thickness."""
     slab_type: List[Literal[1, 2, 3]]
     """Slab typology
-    1: Two-way solid slab.
-    2: One-way solid slab.
-    3: One-way composite slab with ceramic blocks and RC joists or
-    pre-stressed beams."""
-    slab_orient: List[Literal[1, 2, 3]]
-    """Slab unloading orientation
-    1: Unloading in beams along X direction.
-    2: Unloading in beams along Y direction.
-    3: Unloading in beams along both directions."""
-    staircase_slab_depth: float
+    1: Two-way solid slab (SS2).
+    2: One-way solid slab (SS1).
+    3: Composite slabs with pre-fabricated joists and ceramic blocks (HS)."""
+    staircase_slab_dept: List[float | None]
     """Depth of the staircase slabs."""
     beam_type: List[Literal[1, 2]]
     """Beam typology
@@ -379,14 +364,14 @@ class BCIM:
     2: Emergent beams."""
     column_section: List[Literal[1, 2]]
     """Column cross-section
-    1: square solid section.
-    2: rectangular solid section."""
+    1: Square solid section.
+    2: Rectangular solid section."""
     steel_grade: List[str]
-    """Steel material class ID, e.g., S400."""
+    """Steel material class ID, or grade, e.g., 'S400'."""
     concrete_grade: List[str]
-    """Concrete material class ID, e.g., C20."""
+    """Concrete material class ID, or grade, e.g., 'C20'."""
     quality: List[Literal[1, 2, 3]]
-    """Construction quality
+    """Construction quality levels
     1: High quality.
     2: Moderate quality.
     3: Low quality."""
@@ -443,66 +428,59 @@ class BCIM:
         --------------
         >>> design_class = "eu_cdh"
         >>> inputs = {
-                      "typical_storey_height":
-                          {
-                          "cv": 0.07,
-                          "mu": 2.90,
-                          "lower_bound": 2.3,
-                          "upper_bound": 3.8
-                          },
-                      "staircase_bay_width":
-                          {
-                          "lower_bound": 2.8,
-                          "upper_bound": 3.2
-                          },
-                      "standard_bay_width":
-                          {
-                          "corr_coeff_xy": -0.92,
-                          "lower_bound_x": 3.5,
-                          "upper_bound_x": 7.5,
-                          "theta_x": 4.5,
-                          "sigma_x": 0.35,
-                          "lower_bound_y": 3.5,
-                          "upper_bound_y": 7.5,
-                          "theta_y": 4.5,
-                          "sigma_y": 0.35
-                          },
-                      "steel":
-                          {
-                          "tag": ["S400", "S500"],
-                          "probability": [0.10, 0.90]
-                          },
-                      "concrete":
-                          {
-                          "tag": ["C20", "C25", "C30", "C35"],
-                          "probability": [0.30, 0.45, 0.20, 0.05]
-                          },
-                      "ground_storey_height":
-                          {
-                          "maximum": 4.20,
-                          "factor": [1.0, 1.1, 1.2, 1.3, 1.4],
-                          "probability": [0.55, 0.10, 0.20, 0.10, 0.05]
-                          },
-                      "construction_quality":
-                          {
-                          "probability": [0.6, 0.3, 0.1]
-                          },
-                      "slab_properties":
-                          {
-                          "one_to_one_and_comp_ratio": 0.50,
-                          "two_to_two_and_comp_ratio": 0.65,
-                          "max_solid_length": 6.0,
-                          "max_thickness": 0.85,
-                          "staircase_slab_depth": 0.15
-                          },
-                      "composite_slab_wb_ratio": 0.50,
-                      "square_column_ratio": 0.50,
-                      "layout": "all",
-                      "beta": 0.25,
-                      "num_storeys": 5,
-                      "seed": 1987,
-                      "sample_size": 150
-                      }
+                "typical_storey_height": {
+                    "cv": 0.07,
+                    "mu": 2.90,
+                    "lower_bound": 2.3,
+                    "upper_bound": 3.8
+                },
+                "staircase_bay_width": {
+                    "lower_bound": 2.8,
+                    "upper_bound": 3.2
+                },
+                "standard_bay_width": {
+                    "corr_coeff_xy": -0.92,
+                    "lower_bound_x": 3.5,
+                    "upper_bound_x": 7.5,
+                    "theta_x": 4.5,
+                    "sigma_x": 0.35,
+                    "lower_bound_y": 3.5,
+                    "upper_bound_y": 7.5,
+                    "theta_y": 4.5,
+                    "sigma_y": 0.35
+                },
+                "steel": {
+                    "tag": ["S400", "S500"],
+                    "probability": [0.10, 0.90]
+                },
+                "concrete": {
+                    "tag": ["C20", "C25", "C30", "C35"],
+                    "probability": [0.30, 0.45, 0.20, 0.05]
+                },
+                "ground_storey_height": {
+                    "maximum": 4.20,
+                    "factor": [1.0, 1.1, 1.2, 1.3, 1.4],
+                    "probability": [0.55, 0.10, 0.20, 0.10, 0.05]
+                },
+                "construction_quality": {
+                    "probability": [0.6, 0.3, 0.1]
+                },
+                "slab_typology": {
+                    "ss1_prob_given_ss1_or_hs": 0.50,
+                    "ss2_prob_given_ss2_or_hs": 0.65,
+                    "upper_lim_for_min_ss_span_length": 6.0,
+                    "upper_lim_for_max_ss2_span_ratio": 2.0,
+                    "staircase_slab_depth": 0.15,
+                    "floor_slab_thickness": 0.15
+                },
+                "wb_prob_given_hs": 0.50,
+                "square_column_prob": 0.50,
+                "layout": "all",
+                "beta": 0.15,
+                "num_storeys": 5,
+                "seed": 1993,
+                "sample_size": 150
+            }
         """
         # Retrieve default input parameters for the design class
         defaults = self.__defaults.get(design_class).__dict__
@@ -542,7 +520,10 @@ class BCIM:
         self.design_class = \
             [self.inputs.design_class] * self.inputs.sample_size
         self.staircase_slab_depth = \
-            [self.inputs.slab_properties.staircase_slab_depth] * \
+            [self.inputs.slab_typology.staircase_slab_depth] * \
+            self.inputs.sample_size
+        self.slab_thickness = \
+            [self.inputs.slab_typology.floor_slab_thickness] * \
             self.inputs.sample_size
         # Bay with in y direction for staircases is the same as typical one
         self.staircase_span_length_y = self.typical_span_length_y.copy()
@@ -578,17 +559,18 @@ class BCIM:
         self.ground_storey_height = \
             sampler.set_ground_storey_height(
                 tmp.factor, tmp.probability, tmp.maximum)
-        # Slab properties
-        tmp = self.inputs.slab_properties
-        self.slab_thickness, self.slab_type, self.slab_orient, _ = \
-            sampler.set_slab_properties(
-                tmp.one_to_one_and_comp_ratio, tmp.two_to_two_and_comp_ratio,
-                tmp.max_thickness, tmp.max_solid_length)
+        # Slab type
+        tmp = self.inputs.slab_typology
+        self.slab_type = \
+            sampler.set_slab_type(
+                tmp.ss1_prob_given_ss1_or_hs, tmp.ss2_prob_given_ss2_or_hs,
+                tmp.upper_lim_for_min_ss_span_length,
+                tmp.upper_lim_for_max_ss2_span_ratio)
         # Beam types
-        tmp = self.inputs.composite_slab_wb_ratio
+        tmp = self.inputs.wb_prob_given_hs
         self.beam_type = sampler.set_beam_type(tmp)
         # Column types
-        tmp = self.inputs.square_column_ratio
+        tmp = self.inputs.square_column_prob
         self.column_section = sampler.set_column_type(tmp)
         # Steel materials
         tmp = self.inputs.steel
@@ -678,7 +660,7 @@ class BCIM:
         List[TaxonomyData]
             List of design inputs (taxonomy) for each building realisation.
         """
-        names = ['slab_thickness', 'slab_type', 'slab_orient',
+        names = ['slab_thickness', 'slab_type',
                  'staircase_slab_depth', 'beam_type', 'column_section',
                  'geometry', 'steel_grade', 'concrete_grade', 'quality',
                  'beta', 'design_class']
@@ -700,10 +682,9 @@ class BCIM:
             e.g., My/Path/To/The/File.csv
         """
         names = ['staircase_span_length_x', 'typical_span_length_x',
-                 'typical_span_length_y', 'layout', 'typical_storey_height',
-                 'ground_storey_height', 'slab_thickness', 'slab_type',
-                 'slab_orient', 'staircase_slab_depth',
-                 'beam_type', 'column_section',
+                 'typical_span_length_y', 'layout',
+                 'typical_storey_height', 'ground_storey_height',
+                 'slab_type', 'beam_type', 'column_section',
                  'steel_grade', 'concrete_grade', 'quality',
                  'floor_width_x', 'floor_width_y', 'floor_area',
                  'long_over_short_width', 'beta', 'num_storeys',

@@ -39,21 +39,11 @@ from ....utils.units import MPa, mm
 class TaxonomyData:
     """Taxonomy data required for performing simulated-designs.
     """
-    slab_thickness: float
-    """Slab thickness."""
     slab_type: Literal[1, 2, 3]
     """Slab typology
-    1: Two-way solid slab.
-    2: One-way solid slab.
-    3: One-way composite slab with ceramic blocks and RC joists or
-    pre-stressed beams."""
-    slab_orient: Literal[1, 2, 3]
-    """Slab unloading orientation
-    1: Unloading in beams along X direction.
-    2: Unloading in beams along Y direction.
-    3: Unloading in beams along both directions."""
-    staircase_slab_depth: float
-    """Depth of the staircase slabs."""
+    1: Two-way solid slab (SS2).
+    2: One-way solid slab (SS1).
+    3: Composite slabs with pre-fabricated joists and ceramic blocks (HS)."""
     beam_type: Literal[1, 2]
     """Beam typology
     1: Wide beams.
@@ -67,7 +57,7 @@ class TaxonomyData:
     concrete_grade: str
     """Concrete material class ID, e.g., C20."""
     quality: Literal[1, 2, 3]
-    """Construction quality
+    """Construction quality levels
     1: High quality.
     2: Moderate quality.
     3: Low quality."""
@@ -77,6 +67,15 @@ class TaxonomyData:
     """Design lateral load factor."""
     design_class: str
     """Building design class selected."""
+    staircase_slab_depth: Optional[float] = None
+    """Depth of the staircase slabs."""
+    slab_thickness: Optional[float] = None
+    """Slab thickness (depth)."""
+    slab_orientation: Optional[Literal[1, 2, 3]] = None
+    """Slab unloading orientation.
+    1: Unloading in beams along X direction.
+    2: Unloading in beams along Y direction.
+    3: Unloading in beams along both directions."""
 
 
 class BuildingBase(ABC):
@@ -247,14 +246,23 @@ class BuildingBase(ABC):
         return self.taxonomy.design_class
 
     @property
-    def slab_thickness(self) -> float:
+    def slab_thickness(self) -> float | None:
         """
         Returns
         -------
-        float
-            Slab thickness (depth) considered in the building.
+        float | None
+            Slab thickness (depth) considered in the building,
+            if already set in the taxonomy, otherwise, None
         """
-        return self.taxonomy.slab_thickness
+        if hasattr(self.taxonomy, 'slab_thickness'):
+            return self.taxonomy.slab_thickness
+        else:
+            return None
+
+    @slab_thickness.setter
+    def slab_thickness(self, new_thickness: str) -> None:
+        """Setter for `slab_thickness`."""
+        self.taxonomy.slab_thickness = new_thickness
 
     @property
     def slab_type(self) -> Literal[1, 2, 3]:
@@ -271,19 +279,6 @@ class BuildingBase(ABC):
         return self.taxonomy.slab_type
 
     @property
-    def slab_orient(self) -> Literal[1, 2, 3]:
-        """
-        Returns
-        -------
-        Literal[1, 2, 3]
-            Slab unloading orientation from taxonomy data.
-            1: Unloading in beams along X direction.
-            2: Unloading in beams along Y direction.
-            3: Unloading in beams along both directions.
-        """
-        return self.taxonomy.slab_orient
-
-    @property
     def staircase_slab_depth(self) -> float:
         """
         Returns
@@ -291,7 +286,15 @@ class BuildingBase(ABC):
         float
             Building staircase slab thickness (depth).
         """
-        return self.taxonomy.staircase_slab_depth
+        if hasattr(self.taxonomy, 'staircase_slab_depth'):
+            return self.taxonomy.staircase_slab_depth
+        else:
+            return None
+
+    @staircase_slab_depth.setter
+    def staircase_slab_depth(self, new_thickness: str) -> None:
+        """Setter for `staircase_slab_depth`."""
+        self.taxonomy.staircase_slab_depth = new_thickness
 
     @property
     def steel_grade(self) -> str:
@@ -697,6 +700,11 @@ class BuildingBase(ABC):
             slab.roof = rectangle in self.geometry.roof_rectangles
             slab.set_loads(self.loads.permanent, self.loads.variable)
             self.slabs.append(slab)
+        # If slab thickness is not provided, set a global thickness value
+        if self.slab_thickness is None:
+            self.slab_thickness = max(slab.t for slab in self.slabs)
+            for slab in self.slabs:
+                slab.t = self.slab_thickness
 
     def _initialize_stairs(self) -> None:
         """Initializes building stairs.
@@ -708,6 +716,11 @@ class BuildingBase(ABC):
             slab.roof = rectangle in self.geometry.roof_rectangles
             slab.set_loads(self.loads.permanent, self.loads.variable)
             self.stairs.append(slab)
+        # If staircase slab depth is not provided, set a global depth value
+        if self.staircase_slab_depth is None:
+            self.staircase_slab_depth = max(slab.t for slab in self.stairs)
+            for slab in self.stairs:
+                slab.t = self.staircase_slab_depth
 
     def _initialize_materials(self) -> None:
         """Initializes building materials.

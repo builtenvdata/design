@@ -33,8 +33,8 @@ class StairsBase(ABC):
 
     Must be inherited by design class specific stairs.
     """
-    t: float
-    """Stairs slab thickness (depth)."""
+    t: float = 0.15
+    """Stairs slab thickness (depth), by default 0.15 m."""
     rectangle: Rectangle
     """Geometric mesh representation of the stairs (tag, points, lines)."""
     gamma_rc: float
@@ -46,7 +46,7 @@ class StairsBase(ABC):
     roof: bool
     """ Flag for checking if rectangle is located at roof level or not."""
 
-    def __init__(self, rectangle: Rectangle, thickness: float) -> None:
+    def __init__(self, rectangle: Rectangle, thickness: float = None) -> None:
         """Initializes the stairs object.
 
         Parameters
@@ -54,10 +54,11 @@ class StairsBase(ABC):
         rectangle : Rectangle
             Geometric mesh representation of the stairs (tag, points, lines).
         thickness : float
-           Stairs slab thickness (depth).
+           Stairs slab thickness (depth), by default None.
         """
         self.rectangle = rectangle
-        self.t = thickness
+        if thickness:
+            self.t = thickness or self.t
 
     @property
     def lx(self) -> float:

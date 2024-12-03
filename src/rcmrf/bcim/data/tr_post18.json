@@ -43,16 +43,13 @@
     {
       "probability": [0.60, 0.30, 0.10]
     },
-  "slab_properties":
+  "slab_typology":
     {
-      "one_to_one_and_comp_ratio": 1.0, 
-      "two_to_two_and_comp_ratio": 1.0,
-      "max_solid_length": 6.0,
-      "max_thickness": 0.85,
-      "staircase_slab_depth": 0.15
+      "ss1_prob_given_ss1_or_hs": 0.50,
+      "ss2_prob_given_ss2_or_hs": 0.65
     },
-  "composite_slab_wb_ratio": 0.50,
-  "square_column_ratio": 0.50,
+  "wb_prob_given_hs": 0.50,
+  "square_column_prob": 0.50,
   "layout": "all",
   "beta": 0.2,
   "num_storeys": 5,
