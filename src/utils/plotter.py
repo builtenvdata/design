@@ -43,7 +43,7 @@ def _get_node_index(node_tag: int, node_tags: np.ndarray) -> int:
         The index of the node tag within the node tags array.
     """
     (node_index,) = np.where(node_tags[:] == int(node_tag))
-    return int(node_index)
+    return int(node_index[0])
 
 
 def _get_ele_class_tag(ele_tag: int, ele_class_tags: np.ndarray) -> np.ndarray:
@@ -65,7 +65,7 @@ def _get_ele_class_tag(ele_tag: int, ele_class_tags: np.ndarray) -> np.ndarray:
     """
     if ele_class_tags.ndim > 1:
         (i,) = np.where(ele_class_tags[:, 0] == int(ele_tag))
-        return ele_class_tags[i, 1]
+        return ele_class_tags[i[0], 1]
     else:
         return ele_class_tags[1]
 
@@ -296,7 +296,7 @@ def _node_coords(node_tag: int, node_arr: np.ndarray) -> np.ndarray:
         1D array containing coordinates (x, y, z) of the node.
     """
     (i,) = np.where(node_arr[:, 0] == float(node_tag))
-    return node_arr[int(i), 1:]
+    return node_arr[int(i[0]), 1:]
 
 
 def _get_ele_tag_coord(ele_arr: List[np.ndarray], node_arr: np.ndarray
@@ -527,7 +527,7 @@ def plot_model(
 
             for ii, ele in enumerate(this_group):
                 (i,) = np.where(ele_tag_coord[:, 0] == float(ele))
-                this_group_ele_arr[ii] = element_array[int(i)]
+                this_group_ele_arr[ii] = element_array[int(i[0])]
 
             # Get mesh for this group of elements
             mesh_this_group, mesh_lines_this_group, _, _ = \
