@@ -18,7 +18,9 @@ import pyvista as pv
 from pyvista.plotting.plotter import Plotter
 from typing import Union, Optional, Literal, Tuple, List, Dict
 import warnings
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+from mpl_toolkits.mplot3d import Axes3D
 # Imports from utils library
 from ...utils.misc import PRECISION, round_list
 from ...utils.mesh import Point, Line, Rectangle
@@ -957,7 +959,8 @@ class FrameBase(ABC):
                     "in parallel with xy plane.")
 
     def _plot_mesh(self) -> Plotter:
-        """Plot the mesh representation of the frame structure.
+        """Plot the mesh representation of the frame structure using
+        pyvista.
 
         Returns
         -------
@@ -1019,6 +1022,86 @@ class FrameBase(ABC):
         plotter.add_axes_at_origin(labels_off=True, line_width=3)
 
         return plotter
+
+    def _plot_mesh2(self):
+        """Plot the mesh representation of the frame structure using
+        matplotlib.
+
+        Returns
+        -------
+        matplotlib.pyplot.Figure
+            The figure object containing the axes with mesh representation.
+        mpl_toolkits.mplot3d.Axes3D
+            The axes object containing the mesh representation.
+        """
+        # Points (nodes)
+        points = np.array([point.coordinates for point in self.points])
+
+        # Lines (beams)
+        points_in_lines = [line.points for line in self.lines]
+        lines = []
+        for point_in_line in points_in_lines:
+            line = []
+            for point in point_in_line:
+                line.append(self.points.index(point))
+            lines.append(line)
+
+        # Faces (slabs)
+        faces_gray = []
+        for rectangle in self.slabs_rectangles:
+            face = []
+            for point in rectangle.points:
+                face.append(self.points.index(point))
+            faces_gray.append(face)
+
+        # Faces (stairs)
+        faces_blue = []
+        if any(self.stairs_rectangles):
+            for rectangle in self.stairs_rectangles:
+                face = []
+                for point in rectangle.points:
+                    face.append(self.points.index(point))
+                faces_blue.append(face)
+
+        # Set up 3D plot
+        fig = plt.figure(figsize=(10.24, 7.68), dpi=100)
+        ax: Axes3D = fig.add_subplot(111, projection='3d')
+
+        # Plot points
+        ax.scatter(
+            points[:, 0], points[:, 1], points[:, 2], color='black',
+            s=10, alpha=1, marker='s')
+
+        # Plot lines
+        for line in lines:
+            ax.plot(
+                points[line, 0], points[line, 1], points[line, 2],
+                color='red', linewidth=2
+            )
+
+        # Plot gray faces (slabs)
+        for face in faces_gray:
+            verts = [points[face]]
+            poly = Poly3DCollection(
+                verts, color='gray', alpha=0.5, edgecolor='none')
+            ax.add_collection3d(poly)
+
+        # Plot blue faces (stairs)
+        if faces_blue:
+            for face in faces_blue:
+                verts = [points[face]]
+                poly = Poly3DCollection(
+                    verts, color='blue', alpha=0.5, edgecolor='none')
+                ax.add_collection3d(poly)
+
+        # Customize axes
+        ax.set_xlabel('X-axis')
+        ax.set_ylabel('Y-axis')
+        ax.set_zlabel('Z-axis')
+        ax.set_box_aspect([1, 1, 1])  # Aspect ratio 1:1:1
+        ax.grid(True)
+
+        return fig, ax
 
     def find_point_by_tag(self, tag: int) -> Optional[Point]:
         """Find a point in the frame by its tag.
