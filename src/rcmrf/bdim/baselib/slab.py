@@ -47,9 +47,9 @@ class SlabBase(ABC):
     2: One-way solid slab.
     3: One-way composite slab with ceramic blocks and RC joists or
     pre-stressed beams."""
-    __orientation: Literal[1, 2, 3]
+    _orientation: Literal[1, 2, 3]
     """Private attribute for slab unloading orientation."""
-    __thickness: float
+    _thickness: float
     """Private attribute for slab thickness (depth)."""
     gamma_rc: float
     """Unit weight of reinforced concrete."""
@@ -88,8 +88,8 @@ class SlabBase(ABC):
         """
         self.rectangle = rectangle
         self.typology = typology
-        self.__thickness = thickness
-        self.__orientation = orientation
+        self._thickness = thickness
+        self._orientation = orientation
 
     @property
     def lx(self) -> float:
@@ -178,19 +178,19 @@ class SlabBase(ABC):
         -----
         One-way slab directions are always in the direction of the longer span.
         """
-        if not self.__orientation:
+        if not self._orientation:
             if self.typology == 1:
                 return 3
             elif self.lx / self.ly > 1.0:
                 return 1
             else:
                 return 2
-        return self.__orientation
+        return self._orientation
 
     @orientation.setter
     def orientation(self, value=None) -> None:
         """Setter."""
-        self.__orientation = value
+        self._orientation = value
 
     @property
     def t(self) -> float:
@@ -204,7 +204,7 @@ class SlabBase(ABC):
         ----------
         http://www.presdouro.pt/12/pdf/DT_PD2016.pdf
         """
-        if not self.__thickness:
+        if not self._thickness:
             min_span_length = min(self.lx, self.ly)
             if self.typology == 1 or self.typology == 2:
                 return min(
@@ -214,12 +214,12 @@ class SlabBase(ABC):
                 return min(
                     round(100 * (0.032 * min_span_length + 0.065)) / 100,
                     self.MAX_THICKNESS)
-        return self.__thickness
+        return self._thickness
 
     @t.setter
     def t(self, value=None) -> None:
-        """Setter."""
-        self.__thickness = value
+        """Setter for slab thickness (depth)."""
+        self._thickness = value
 
     @property
     def beam_tributary_areas(self) -> List[float]:

@@ -220,7 +220,6 @@ class QualityBase(ABC):
             loc=uniform_low_sbh,
             scale=uniform_up_sbh - uniform_low_sbh
             )
-        # TODO: Should we use mean steel yield strength instead?
         # Store adjusted properties of columns
         for i, col in enumerate(columns):
             col.fc_q = col.fcm * col_fc_ratio[i]

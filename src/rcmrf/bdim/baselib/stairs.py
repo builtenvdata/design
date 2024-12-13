@@ -33,8 +33,9 @@ class StairsBase(ABC):
 
     Must be inherited by design class specific stairs.
     """
-    t: float = 0.15
-    """Stairs slab thickness (depth), by default 0.15 m."""
+    _thickness: float = 0.15
+    """Private attribute for stairs slab thickness (depth), by default 0.15m.
+    """
     rectangle: Rectangle
     """Geometric mesh representation of the stairs (tag, points, lines)."""
     gamma_rc: float
@@ -57,8 +58,24 @@ class StairsBase(ABC):
            Stairs slab thickness (depth), by default None.
         """
         self.rectangle = rectangle
-        if thickness:
-            self.t = thickness or self.t
+        self.t = thickness
+
+    @property
+    def t(self) -> float:
+        """
+        Returns the default value or the specified value in TaxonomyData.
+
+        Returns
+        -------
+        float
+            Stairs slab thickness (depth).
+        """
+        return self._thickness
+
+    @t.setter
+    def t(self, value=None) -> None:
+        """Setter for stairs slab thickness (depth)."""
+        self._thickness = value or self._thickness
 
     @property
     def lx(self) -> float:
