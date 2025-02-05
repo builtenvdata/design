@@ -1,0 +1,9 @@
+{
+    "beam_longitudinal_bar_diameters" : [12, 14, 16, 18, 20, 22, 24, 26 ],
+    "beam_transverse_bar_diameters": [6, 8, 10, 12, 14, 16, 18],
+    "beam_transverse_bar_spacings": [50, 75, 100, 125, 150, 175, 200, 225, 250],
+    "column_longitudinal_bar_diameters" : [14, 16, 18, 20, 22, 24, 26],
+    "column_transverse_bar_diameters": [6, 8, 10, 12, 14, 16, 18],
+    "column_transverse_bar_spacings": [50, 75, 100, 125, 150, 175, 200, 225, 250],
+    "units": "mm"
+}

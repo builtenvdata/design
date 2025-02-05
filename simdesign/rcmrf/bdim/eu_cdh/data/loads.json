@@ -1,0 +1,103 @@
+{    
+    "variable": {
+        "floor": 2.0,
+        "staircase": 3.0,
+        "roof": 0.0
+    },
+    "permanent": {
+        "floor": 2.0,
+        "staircase": 2.0,
+        "roof": 2.0,
+        "infill": 7.0,
+        "gamma_rc": 25.0
+    },
+    "combinations": 
+    [
+        {   
+            "tag": "quasi-static",
+            "loads": {
+                "G": 1.0,
+                "Q": 1.0
+            }
+        },
+        {   
+            "tag": "uls",
+            "loads": {
+                "G": 1.35,
+                "Q": 1.50
+            }
+        },
+        {   
+            "tag": "seismic1",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E+X": 1.0,
+                "E+Y": 0.3
+            }
+        },
+        {   
+            "tag": "seismic2",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E+X": 1.0,
+                "E-Y": 0.3
+            }
+        },
+        {   
+            "tag": "seismic3",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E-X": 1.0,
+                "E-Y": 0.3
+            }
+        },
+        {   
+            "tag": "seismic4",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E-X": 1.0,
+                "E+Y": 0.3
+            }
+        },
+        {   
+            "tag": "seismic5",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E+X": 0.3,
+                "E+Y": 1.0
+            }
+        },
+        {   
+            "tag": "seismic6",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E+X": 0.3,
+                "E-Y": 1.0
+            }
+        },
+        {   
+            "tag": "seismic7",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E-X": 0.3,
+                "E-Y": 1.0
+            }
+        },
+        {   
+            "tag": "seismic8",
+            "loads": {
+                "G": 1.0,
+                "Q": 0.3,
+                "E-X": 0.3,
+                "E+Y": 1.0
+            }
+        }
+    ]
+}

@@ -1,0 +1,8 @@
+staircase_span_length_x,typical_span_length_x,typical_span_length_y,layout,typical_storey_height,ground_storey_height,slab_type,beam_type,column_section,steel_grade,concrete_grade,quality,floor_width_x,floor_width_y,floor_area,long_over_short_width,beta,num_storeys,design_class,staircase_span_length_y
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.05,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.1,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.15,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.2,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.25,4,eu_cdl,4.5
+3,4.5,4.5,B05,2.8,3.1,1,2,1,S240,C14,1,21,13.5,283.5,1.55556,0.3,4,eu_cdl,4.5

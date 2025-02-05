@@ -1,0 +1,24 @@
+{
+    "variable": {
+        "floor": 2.0,
+        "staircase": 3.0,
+        "roof": 0.0
+    },
+    "permanent": {
+        "floor": 2.0,
+        "staircase": 2.0,
+        "roof": 2.0,
+        "infill": 7.0,
+        "gamma_rc": 24.0
+    },
+    "combinations": 
+    [
+        {   
+            "tag": "quasi-static",
+            "loads": {
+                "G": 1.0,
+                "Q": 1.0
+            }
+        }
+    ]
+}

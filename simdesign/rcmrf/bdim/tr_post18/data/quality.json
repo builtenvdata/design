@@ -1,0 +1,29 @@
+{
+  "high": {
+    "joint": "rigid",
+    "bondslip_factor": 0.00,
+    "sigma_fck": 0.10,
+    "sigma_fsyk": 0.01,
+    "sigma_cover": 0.10,
+    "uniform_low_sbh": 1.00,
+    "uniform_up_sbh": 1.05
+  },
+  "moderate": {
+    "joint": "rigid",
+    "bondslip_factor": 0.50,
+    "sigma_fck": 0.20,
+    "sigma_fsyk": 0.025,
+    "sigma_cover": 0.20,
+    "uniform_low_sbh": 1.00,
+    "uniform_up_sbh": 1.30
+  },
+  "low": {
+    "joint": "rigid",
+    "bondslip_factor": 1.00,
+    "sigma_fck": 0.30,
+    "sigma_fsyk": 0.05,
+    "sigma_cover": 0.30,
+    "uniform_low_sbh": 1.00,
+    "uniform_up_sbh": 1.50
+  }
+}
