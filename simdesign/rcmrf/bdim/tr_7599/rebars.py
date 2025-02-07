@@ -120,7 +120,7 @@ class Rebars(RebarsBase):
 
         References
         ----------
-        TBEC-1975
+        Section 6.6.5.1 in TBEC-1975
 
         Returns
         -------

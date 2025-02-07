@@ -44,9 +44,6 @@ class Concrete(ConcreteBase):
     fck : float
         Characteristic value of the compressive strength of concrete
         cylinders (in MPa).
-    fck_cube : float
-        Characteristic value of the compressive strength of concrete cubes
-        (in MPa).
     fcd : float
         Design value of concrete compressive strength (in MPa).
     fcm : float
@@ -60,9 +57,6 @@ class Concrete(ConcreteBase):
     POISSONS_RATIO : float
         Poisson's ratio for concrete, by default 0.2.
     """
-    fck_cube: float
-    """Characteristic value of the compressive strength of concrete
-    cylinders (in MPa)."""
     PARTIAL_FACTOR: float = 1.5
     """Partial factor for concrete, 1.5."""
 

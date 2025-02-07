@@ -32,8 +32,10 @@ def base_inputs_opspy():
     "eu_cdh",
     "tr_pre75",
     "tr_7599",
-    "tr_0018",
-    "tr_post18"
+    "tr_0018_cdm",
+    "tr_0018_cdh",
+    "tr_post18_cdm",
+    "tr_post18_cdh"
 ])
 def test_rcmrf_opspy(base_inputs_opspy, design_class):
     """
@@ -72,8 +74,10 @@ def base_inputs_opstcl():
     "eu_cdh",
     "tr_pre75",
     "tr_7599",
-    "tr_0018",
-    "tr_post18"
+    "tr_0018_cdm",
+    "tr_0018_cdh",
+    "tr_post18_cdm",
+    "tr_post18_cdh"
 ])
 def test_rcmrf_opstcl(base_inputs_opstcl, design_class):
     """

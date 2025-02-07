@@ -194,7 +194,7 @@ class Sampler:
 
         Typical span lengths are represented with truncated log-normal
         distribution. It is assumed that span lengths are correlated.
-        The samples are generation from multivarite truncated lognormal
+        The samples are generated from multivariate truncated lognormal
         distribution.
 
         Parameters
@@ -489,7 +489,7 @@ class Sampler:
 
     def set_column_type(self, square_prob: float) -> List[Literal[1, 2]]:
         """
-        Sets the type of column type or cross-section geometry.
+        Sets the type of column or cross-section geometry.
 
         Parameters
         ----------

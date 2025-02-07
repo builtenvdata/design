@@ -26,12 +26,12 @@
   "steel":
     {
       "grade": ["S220", "S420"],
-      "probability": [0.60, 0.40]
+      "probability": [0.70, 0.30]
     },
   "concrete":
     {
       "grade": ["C14", "C16", "C20", "C25"],
-      "probability": [0.30, 0.30, 0.30, 0.10]
+      "probability": [0.50, 0.30, 0.15, 0.05]
     },
   "ground_storey_height":
     {
@@ -45,11 +45,12 @@
     },
   "slab_typology":
     {
-      "ss1_prob_given_ss1_or_hs": 0.50,
-      "ss2_prob_given_ss2_or_hs": 0.65
+      "ss1_prob_given_ss1_or_hs": 1.0,
+      "ss2_prob_given_ss2_or_hs": 1.0,
+      "max_ss_short_span": 10
     },
   "wb_prob_given_hs": 0.50,
-  "square_column_prob": 0.50,
+  "square_column_prob": 0.05,
   "layout": "all",
   "beta": 0.1,
   "num_storeys": 5,

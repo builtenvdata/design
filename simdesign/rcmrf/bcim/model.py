@@ -1,7 +1,7 @@
 """
 Building Class Information Model (BCIM) and its main components.
 
-The current implmenetation is limited to the generation of building portfolio
+The current implementation is limited to the generation of building portfolio
 with fixed floor layouts and single staircase throughout buildings.
 """
 

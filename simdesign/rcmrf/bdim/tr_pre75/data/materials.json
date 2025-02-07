@@ -1,14 +1,13 @@
 {
     "concrete" :
-    [
-        {"grade": "C12", "fck": 12, "fck_cube": 15},
-        {"grade": "C14", "fck": 14, "fck_cube": 18},
-        {"grade": "C16", "fck": 16, "fck_cube": 20},
-        {"grade": "C20", "fck": 20, "fck_cube": 25}
+    [   {"grade": "C10", "fck": 10, "fck_cube": 13, "fcm": 8.5},
+        {"grade": "C14", "fck": 14, "fck_cube": 18, "fcm": 11.2},
+        {"grade": "C16", "fck": 16, "fck_cube": 22, "fcm": 13.6},
+        {"grade": "C20", "fck": 20, "fck_cube": 30, "fcm": 17}
     ],
     "steel" :
     [
-        {"grade": "S220", "fsyk": 220},
-        {"grade": "S420", "fsyk": 420}
+        {"grade": "S220", "fsyk": 220, "fsym": 242},
+        {"grade": "S420", "fsyk": 420, "fsym": 462}
     ]
 }

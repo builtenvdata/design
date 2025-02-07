@@ -5,8 +5,10 @@ from .eu_cdm.building import Building as EuCDM
 from .eu_cdh.building import Building as EuCDH
 from .tr_pre75.building import Building as TrPre75
 from .tr_7599.building import Building as Tr7599
-from .tr_0018.building import Building as Tr0018
-from .tr_post18.building import Building as TrPost18
+from .tr_0018_cdh.building import Building as Tr0018CDH
+from .tr_0018_cdm.building import Building as Tr0018CDM
+from .tr_post18_cdh.building import Building as TrPost18CDH
+from .tr_post18_cdm.building import Building as TrPost18CDM
 
 
 class BDIM:
@@ -22,8 +24,10 @@ class BDIM:
         "eu_cdh": EuCDH,
         "tr_pre75": TrPre75,
         "tr_7599": Tr7599,
-        "tr_0018": Tr0018,
-        "tr_post18": TrPost18,
+        "tr_0018_cdh": Tr0018CDH,
+        "tr_0018_cdm": Tr0018CDM,
+        "tr_post18_cdh": TrPost18CDH,
+        "tr_post18_cdm": TrPost18CDM,
     }
     """Design class mapper."""
 
@@ -59,7 +63,7 @@ class BDIM:
         if bdim_class is None:
             valid_classes = ", ".join(cls._design_classes.keys())
             raise ValueError(
-                f"Invalid design class: {taxonomy.design_class}. "
+                f"Invalid design class: {taxonomy.design_class}."
                 f"Valid options are: {valid_classes}."
             )
         # Instantiate and return the appropriate class

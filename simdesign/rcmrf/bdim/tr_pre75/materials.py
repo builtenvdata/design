@@ -20,9 +20,6 @@ class Steel(SteelBase):
         Grade of the steel material.
     fsyk : float
         Characteristic value of steel yield strength (in MPa).
-    fsyd_eq : float
-        Design value of steel yield strength considered for seismic design
-        (in MPa).
     fsym : float
         Mean value of steel yield strength (in MPa).
     fsyd: float
@@ -49,9 +46,6 @@ class Concrete(ConcreteBase):
     fck_cube : float
         Characteristic value of the compressive strength of concrete cubes
          (in MPa).
-    fcd_eq : float
-        Design value of the concrete compressive strength considered for
-        seismic design (in MPa).
     fcd : float
         Design value of concrete compressive strength (in MPa).
     fcm : float

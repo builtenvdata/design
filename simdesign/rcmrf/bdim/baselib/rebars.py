@@ -293,7 +293,7 @@ class RebarsBase(ABC):
         the diameter of 2nd type long. bar (dbl1 >= dbl2). Even if 2nd diam is
         smaller, choose the closest one to dbl1 from the available bars.
         - dbl1's and dbl2's at bottom and top parts of the sections do not
-        necessarily have to be the same. (e.g., dbl_t1=0.020, dbl_b1=0.25)
+        necessarily have to be the same. (e.g., dbl_t1=0.020, dbl_b1=0.025)
         - Along the beam which is continuous over the multiple spans maximum of
         two rebar diameter is allowed.
         - At the two ends of beam sections, the provided reinforcement could be

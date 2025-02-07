@@ -57,7 +57,8 @@ class Beam(BeamBase):
         Returns
         -------
         float
-            Characteristic value of tensional steel strength (in base units).
+            Characteristic value of tensional concrete strength
+            (in base units).
         """
         return (0.35 * (self.concrete.fck) ** (1 / 2)) * MPa
 
@@ -67,7 +68,7 @@ class Beam(BeamBase):
         Returns
         -------
         float
-            Design value of tensional steel strength (in base units).
+            Design value of tensional concrete strength (in base units).
         """
         return self.fctk / self.concrete.PARTIAL_FACTOR
 
