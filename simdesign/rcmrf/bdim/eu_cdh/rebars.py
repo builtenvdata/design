@@ -80,8 +80,8 @@ class Rebars(RebarsBase):
     """For columns, maximum distance between longitudinal bars within a section
     that can be considered to be confined without the need to have
     an extra stirrup leg around them.
-    EC2 9.5.3 (6) dictates 150mm
-    EC8 5.4.3.2.2 (11) b) dictates 200mm
+    EC2 9.5.3 (6) dictates 150mm for corner bars
+    EC8 5.4.3.2.2 (11) b) dictates 200mm for interior bars
     """
 
     def _get_min_beam_dbh(self, **kwargs) -> float | np.ndarray:

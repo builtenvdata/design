@@ -569,10 +569,10 @@ class RebarsBase(ABC):
         for j in range(num_sec):
             # Initial assumptions for number of legs and diameters
             nbh = 2  # start with closed stirrup
-            leg_conf_dist = 0.9 * b[j] / nbh
+            leg_conf_dist = 0.9 * b[j] / (nbh - 1)
             while leg_conf_dist > self.beam_max_leg_dist:
                 nbh += 1  # add stirrup
-                leg_conf_dist = 0.9 * b[j] / nbh
+                leg_conf_dist = 0.9 * b[j] / (nbh - 1)
             # No. of stirrup legs parallel to height
             nbh_y[j] = nbh
             # Current transverse reinforcement diameter
@@ -935,16 +935,16 @@ class RebarsBase(ABC):
         for j in range(num_sec):
             # Initial no. of stirrup legs parallel to x-axis
             nbh_x[j] = 2  # start with closed stirrup
-            leg_conf_dist_x = 0.9 * by[j] / nbh_x[j]
+            leg_conf_dist_x = 0.9 * by[j] / (nbh_x[j] - 1)
             while leg_conf_dist_x > self.col_max_leg_dist:
                 nbh_x[j] += 1  # add stirrup leg
-                leg_conf_dist_x = 0.9 * by[j] / nbh_x[j]
+                leg_conf_dist_x = 0.9 * by[j] / (nbh_x[j] - 1)
             # Initial no. of stirrup legs parallel to y-axis
             nbh_y[j] = 2  # start with closed stirrup
-            leg_conf_dist_y = 0.9 * bx[j] / nbh_y[j]
+            leg_conf_dist_y = 0.9 * bx[j] / (nbh_y[j] - 1)
             while leg_conf_dist_y > self.col_max_leg_dist:
                 nbh_y[j] += 1  # add stirrup leg
-                leg_conf_dist_y = 0.9 * bx[j] / nbh_y[j]
+                leg_conf_dist_y = 0.9 * bx[j] / (nbh_y[j] - 1)
             # Initial transverse reinforcement diameter
             diff = self.col_trans_bar_diams - dbh_min[j]
             dbh[j] = self.col_trans_bar_diams[np.where(diff >= 0)[0][0]]

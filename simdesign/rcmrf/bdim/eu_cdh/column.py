@@ -146,8 +146,11 @@ class Column(ColumnBase):
 
         Notes
         -----
-        Eurocode enforces checks for axial load ratio which was missing in
+        - Eurocode enforces checks for axial load ratio which was missing in
         the original code. This is now added.
+        - In accordance with EN 1992-1-1:2004 5.4.3.2.1(2) biaxial bending
+        is taken into account by decreasing the uniaxial moment of resistance
+        or increasing the demand by 30%.
         """
         # Distance from extreme compression fiber to centroid of longitudinal
         # tension reinforcement.
@@ -225,6 +228,12 @@ class Column(ColumnBase):
 
     def compute_required_longitudinal_reinforcement(self) -> None:
         """Computes the required longitudinal reinforcement for design forces.
+
+        Notes
+        -----
+        - In accordance with EN 1992-1-1:2004 5.4.3.2.1(2) biaxial bending
+        is taken into account by decreasing the uniaxial moment of resistance
+        or increasing the demand by 30%.
         """
         # Initial longitudinal reinforcement area
         Aslx_req = 2*np.pi*0.25*((0.012*m)**2)  # Minimum reinforcement

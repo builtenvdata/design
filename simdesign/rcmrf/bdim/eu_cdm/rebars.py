@@ -64,9 +64,9 @@ class Rebars(RebarsBase):
     """
     col_max_leg_dist: float = 150*mm
     """For columns, maximum distance between longitudinal bars within a section
-    that can be considered to be confined without the need to have
-    an extra stirrup leg around them.
-    EC2 9.5.3 (6) dictates 150mm
+    that can be considered to be confined without the need to have an extra
+    stirrup leg around them.
+    EC2 9.5.3 (6) dictates 150mm for corner bars
     """
 
     @property
