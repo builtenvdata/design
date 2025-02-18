@@ -3,15 +3,15 @@ Miscellaneous utility methods.
 """
 
 # Imports from installed packages
+import errno
 import numpy as np
+import os
+from pathlib import Path
 from time import time, gmtime
 from typing import Callable, Union, Any, Dict, List
-import os
 import shutil
-import errno
+import sys
 import stat
-from pathlib import Path
-
 
 PRECISION = 8
 """Precision used in rounding of floating numbers."""
@@ -105,7 +105,10 @@ def remove_dir(dir_path: Union[str, Path]) -> None:
         Name of directory to remove.
     """
     if os.path.exists(dir_path):
-        shutil.rmtree(path=dir_path, onexc=handle_remove_read_only)
+        if sys.version_info < (3, 12):
+            shutil.rmtree(path=dir_path, onerror=handle_remove_read_only)
+        else:
+            shutil.rmtree(path=dir_path, onexc=handle_remove_read_only)
 
 
 def make_dir(dir_path: Union[str, Path]) -> None:

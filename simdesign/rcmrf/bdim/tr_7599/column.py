@@ -25,7 +25,7 @@ from .materials import Steel, Concrete
 from ..baselib.column import ColumnBase
 
 # Imports from utils library
-from ....utils.units import MPa, m
+from ....utils.units import MPa, N, m, mm
 
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
@@ -40,6 +40,10 @@ class Column(ColumnBase):
     """Steel material."""
     concrete: Concrete
     """Concrete material."""
+    MIN_B_SQUARE: float = 0.25 * m
+    """The default minimum square column dimension."""
+    MIN_B_RECTANGLE: float = 0.25 * m
+    """The default minimum rectangular column dimension."""
 
     @property
     def fctk(self) -> float:
@@ -222,33 +226,38 @@ class Column(ColumnBase):
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces."""
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
-        dx = 0.9 * self.bx
-        dy = 0.9 * self.by
+        dx = (self.bx - 2 * self.cover - 0.008)
+        dy = (self.by - 2 * self.cover - 0.008)
 
         # Minimum transverse reinforcement area to spacing ratio
-        Ashx_sh_min = self.rhoh_min * (self.by - self.cover)
-        Ashy_sh_min = self.rhoh_min * (self.bx - self.cover)
+        Ash_sh_min = self.rhoh_min * dy * dx
+        Ashx_sh_min = Ash_sh_min * dx / (dx + dy)
+        Ashy_sh_min = Ash_sh_min * dy / (dx + dy)
 
         # Design shear forces
         Vd_x = max(self.envelope_forces.Vx1, self.envelope_forces.Vx9)
         Vd_y = max(self.envelope_forces.Vy1, self.envelope_forces.Vy9)
-        Nd = max(abs(self.envelope_forces.N1_neg),
+        Nd = min(abs(self.envelope_forces.N1_neg),
                  abs(self.envelope_forces.N9_neg))
 
-        # Shear force resisted by concrete, Section 8.3 in TS500-1984
-        Vcr_x = 0.65 * self.fctd * self.by * dx * (1 + 0.07 * Nd / self.Ag)
-        Vcr_y = 0.65 * self.fctd * self.bx * dy * (1 + 0.07 * Nd / self.Ag)
-
         # Transverse reinforcement computation, Section 8.3 in TS500-1984
+        Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
+        Vc_x = 0.8 * Vcr_x
+        Vcr_y = 0.65 * (self.fctd / MPa) * (self.bx / mm) * (dy / mm) * (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
+        Vc_y = 0.8 * Vcr_y
+
+        # Transverse reinforcement computation
         if Vd_x <= Vcr_x:
-            Ashx_sh = self.rhoh_min * self.by
+            Ashx_sh = Ashx_sh_min
         else:
-            Ashx_sh = Vd_x / (self.fsyd * dx)
+            Vw = Vd_x - Vc_x
+            Ashx_sh = Vw / (self.fsyd * dx)
 
         if Vd_y <= Vcr_y:
-            Ashy_sh = self.rhoh_min * self.bx
+            Ashy_sh = Ashy_sh_min
         else:
-            Ashy_sh = Vd_y / (self.fsyd * dy)
+            Vw = Vd_y - Vc_y
+            Ashy_sh = Vw / (self.fsyd * dy)
 
         # Save the required transverse reinforcement area to spacing ratio
         self.Ashx_sbh_req = max(Ashx_sh_min, Ashx_sh)

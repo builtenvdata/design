@@ -91,20 +91,23 @@ class Beam(BeamBase):
         bool2 = self.exterior  # Forces exterior beams to emergent
         bool3 = self.stairs_wg != 0.0  # Forces stairs beams to be emergent
 
-        if self.direction == 'x':  # Beam is along x
-            bxmax = max(col.bx for col in self.columns if col)
-            bxmin = min(col.bx for col in self.columns if col)
-            Lnet = self.L - (bxmax + bxmin) / 2
-        elif self.direction == 'y':  # Beam is along y
-            bxmax = max(col.by for col in self.columns if col)
-            bxmin = min(col.by for col in self.columns if col)
-            Lnet = self.L - (bxmax + bxmin) / 2
-
-        h_max_code = min(3.5 * self.b, Lnet / 4)
-        if bool1 or bool2 or bool3:
-            return min(self.MAX_H_EB, h_max_code)
+        if bool3:
+            return self.MAX_H_EB
         else:
-            return min(self.MAX_H_WB, h_max_code)
+            if self.direction == 'x':  # Beam is along x
+                bxmax = max(col.bx for col in self.columns if col)
+                bxmin = min(col.bx for col in self.columns if col)
+                Lnet = self.L - (bxmax + bxmin) / 2
+            elif self.direction == 'y':  # Beam is along y
+                bymax = max(col.by for col in self.columns if col)
+                bymin = min(col.by for col in self.columns if col)
+                Lnet = self.L - (bymax + bymin) / 2
+
+            h_max_code = min(3.5 * self.b, Lnet / 4)
+            if bool1 or bool2:
+                return min(self.MAX_H_EB, h_max_code)
+            else:
+                return min(self.MAX_H_WB, h_max_code)
 
     @property
     def fctk(self) -> float:
@@ -339,7 +342,7 @@ class Beam(BeamBase):
         Vrd_max = (0.85 * (self.b / mm) * (d / mm) *
                    np.sqrt(self.fck / MPa) / 1000)  # Eq. 7.10 in TBEC-2018
 
-        if mu < mu_economic or Vmax < Vrd_max:
+        if mu < mu_economic and Vmax < Vrd_max:
             self.ok = True  # Ok
         else:
             self.ok = False  # Not ok

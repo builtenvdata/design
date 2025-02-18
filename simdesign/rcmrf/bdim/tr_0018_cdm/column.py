@@ -20,7 +20,7 @@ from ..baselib.column import ColumnBase
 from ..tr_7599.column import LongReinfAreaCalculator
 
 # Imports from utils library
-from ....utils.units import MPa, m
+from ....utils.units import MPa, N, m, mm
 
 ECONOMIC_MU: float = 0.25
 """Maximum mu value considered for the economic column design."""
@@ -227,8 +227,8 @@ class Column(ColumnBase):
     def compute_required_transverse_reinforcement(self) -> None:
         """Computes the required transverse reinforcement for design forces."""
         # Distance of long. bars in tens. to extreme conc. fibers in compr.
-        dx = 0.9 * self.bx
-        dy = 0.9 * self.by
+        dx = (self.bx - 2 * self.cover - 0.008)
+        dy = (self.by - 2 * self.cover - 0.008)
 
         # Design forces from envelopes
         Vd_x = max(self.envelope_forces.Vx1, self.envelope_forces.Vx9)
@@ -241,21 +241,21 @@ class Column(ColumnBase):
         Ve_y = Vd_y
 
         # Shear force resisted by concrete, Eq.8.1 in TS500-2000
-        Vcr_x = 0.65 * self.fctd * self.by * dx * (1 + 0.07 * Nd / self.Ag)
+        Vcr_x = 0.65 * (self.fctd / MPa) * (self.by / mm) * (dx / mm) * (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
         Vc_x = 0.8 * Vcr_x
-        Vcr_y = 0.65 * self.fctd * self.bx * dy * (1 + 0.07 * Nd / self.Ag)
+        Vcr_y = 0.65 * (self.fctd / MPa) * (self.bx / mm) * (dy / mm) * (1 + 0.07 * (Nd / N) / (self.Ag / (mm**2))) / 1000
         Vc_y = 0.8 * Vcr_y
 
         # Transverse reinforcement computation
         # Section 7.7.5 in TBEC-1998 and Section 3.7.5 in TBEC-2007
         if Ve_x <= Vcr_x:
-            Ashx_sh = self.rhoh_min * self.by
+            Ashx_sh = self.rhoh_min * dy
         else:
             Vw = Ve_x - Vc_x
             Ashx_sh = Vw / (self.fsyd * dx)
 
         if Ve_y <= Vcr_y:
-            Ashy_sh = self.rhoh_min * self.bx
+            Ashy_sh = self.rhoh_min * dx
         else:
             Vw = Ve_y - Vc_y
             Ashy_sh = Vw / (self.fsyd * dy)

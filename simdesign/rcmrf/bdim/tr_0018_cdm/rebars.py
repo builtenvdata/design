@@ -77,7 +77,7 @@ class Rebars(RebarsBase):
     col_min_sbl: float = 35 * mm
     """For columns, minimum spacing between longitudinal bars (reinforcement).
     TS500-Section9.5.2"""
-    col_max_leg_dist: float = 150 * mm
+    col_max_leg_dist: float = 200 * mm
     """For columns, maximum distance between longitudinal bars within a section
     that can be considered to be confined without the need to have
     an extra stirrup leg around them.

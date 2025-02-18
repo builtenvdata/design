@@ -325,8 +325,8 @@ class Building(BuildingBase):
                 ) = get_sum_mrdb_at_joint(joint_j)
 
                 # Moment distribution ratios for in line columns (Selected
-                # combos (6,8) are belongs to seismic combos in x and y
-                # directions)
+                # seismic combos (5,7) are belongs to seismic combos
+                # in x and y directions)
                 ratio_x_top = abs(
                     joint_j.bottom_column.design_forces[8].Mx9) / (
                     abs(joint_j.bottom_column.design_forces[8].Mx9) +
@@ -406,8 +406,8 @@ class Building(BuildingBase):
                     ) = get_sum_mrdb_at_joint(joint_j)
 
                     # Moment distribution ratios for in line columns (Selected
-                    # combos (6,8) are belongs to seismic combos in x and y
-                    # directions)
+                    # seismic combos (5,7) are belongs to seismic combos
+                    # in x and y directions)
                     ratio_x_top = abs(
                         joint_j.bottom_column.design_forces[8].Mx9) / (
                             abs(joint_j.bottom_column.design_forces[8].Mx9) +

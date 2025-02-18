@@ -189,14 +189,14 @@ class Beam(BeamBase):
             self.envelope_forces.M9_pos,
             abs(self.envelope_forces.M1_neg),
             abs(self.envelope_forces.M5_neg),
-            abs(self.envelope_forces.M9_neg),
+            abs(self.envelope_forces.M9_neg)
         )
 
         # Verify the adequacy of the section dimensions
         Vrd_max = 0.25 * self.fcd * self.b * d  # Eq. 8.49 in TS500-1984
         mu = max_moment / (self.fcd * self.b * d**2)  # for max. bending moment
 
-        if mu < mu_economic or max_shear < Vrd_max:
+        if mu < mu_economic and max_shear < Vrd_max:
             self.ok = True  # Ok
         else:
             self.ok = False  # Not ok

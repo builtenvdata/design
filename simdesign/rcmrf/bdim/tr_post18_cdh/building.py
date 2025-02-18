@@ -325,28 +325,28 @@ class Building(BuildingBase):
                 ) = get_sum_mrdb_at_joint(joint_j)
 
                 # Moment distribution ratios for in line columns (Selected
-                # seismic combos (10,15) are belongs to seismic combos
+                # seismic combos (9,13) are belongs to seismic combos
                 # in x and y directions)
-                ratio_x_top = abs(joint_j.bottom_column.design_forces[16].
+                ratio_x_top = abs(joint_j.bottom_column.design_forces[14].
                                   Mx9) / (abs(joint_j.bottom_column.
-                                              design_forces[16].Mx9) +
+                                              design_forces[14].Mx9) +
                                           abs(joint_j.top_column.
-                                              design_forces[16].Mx1))
-                ratio_y_top = abs(joint_j.bottom_column.design_forces[11].
+                                              design_forces[14].Mx1))
+                ratio_y_top = abs(joint_j.bottom_column.design_forces[10].
                                   My9) / (abs(joint_j.bottom_column.
-                                              design_forces[11].My9) +
+                                              design_forces[10].My9) +
                                           abs(joint_j.top_column.
-                                              design_forces[11].My1))
-                ratio_x_bot = abs(joint_i.top_column.design_forces[16].
+                                              design_forces[10].My1))
+                ratio_x_bot = abs(joint_i.top_column.design_forces[14].
                                   Mx1) / (abs(joint_i.top_column.
-                                              design_forces[16].Mx1) +
+                                              design_forces[14].Mx1) +
                                           abs(joint_i.bottom_column.
-                                              design_forces[16].Mx9))
-                ratio_y_bot = abs(joint_i.top_column.design_forces[11].
+                                              design_forces[14].Mx9))
+                ratio_y_bot = abs(joint_i.top_column.design_forces[10].
                                   My1) / (abs(joint_i.top_column.
-                                              design_forces[11].My1) +
+                                              design_forces[10].My1) +
                                           abs(joint_i.bottom_column.
-                                              design_forces[11].My9))
+                                              design_forces[10].My9))
 
                 # Column plastic moments to be used for shear capacity forces
                 Mpi_x_pos = gamma_rd * ratio_x_bot * sum_mrdb_y_pos_i
@@ -426,18 +426,18 @@ class Building(BuildingBase):
                     ) = get_sum_mrdb_at_joint(joint_j)
 
                     # Moment distribution ratios for in line columns (Selected
-                    # seismic combos (10,15) are belongs to seismic combos
+                    # seismic combos (9,13) are belongs to seismic combos
                     # in x and y directions)
-                    ratio_x_top = abs(joint_j.bottom_column.design_forces[16].
+                    ratio_x_top = abs(joint_j.bottom_column.design_forces[14].
                                       Mx9) / (abs(joint_j.bottom_column.
-                                                  design_forces[16].Mx9) +
+                                                  design_forces[14].Mx9) +
                                               abs(joint_j.top_column.
-                                                  design_forces[16].Mx1))
-                    ratio_y_top = abs(joint_j.bottom_column.design_forces[11].
+                                                  design_forces[14].Mx1))
+                    ratio_y_top = abs(joint_j.bottom_column.design_forces[10].
                                       My9) / (abs(joint_j.bottom_column.
-                                                  design_forces[11].My9) +
+                                                  design_forces[10].My9) +
                                               abs(joint_j.top_column.
-                                                  design_forces[11].My1))
+                                                  design_forces[10].My1))
 
                     # Column plastic moments at joint j to be used for shear
                     # capacity forces

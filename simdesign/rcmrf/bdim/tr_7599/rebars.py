@@ -60,11 +60,6 @@ class Rebars(RebarsBase):
     """For beams, min. spacing between longitudinal bars (reinforcement)."""
     col_min_sbl: float = 35 * mm
     """For columns, min. spacing between longitudinal bars (reinforcement)."""
-    col_max_leg_dist: float = 150 * mm
-    """For columns, maximum distance between longitudinal bars within a section
-    that can be considered to be confined without the need to have
-    an extra stirrup leg around them.
-    """
 
     def _get_min_beam_dbh(self, **kwargs) -> float | np.ndarray:
         """Gets the minimum transverse reinforcement diameter in beams.
@@ -127,4 +122,4 @@ class Rebars(RebarsBase):
         float | np.ndarray
             Maximum spacing between transverse reinforcement.
         """
-        return 100 * mm * np.ones(np.size(kwargs["dbl"]))
+        return 100 * mm
