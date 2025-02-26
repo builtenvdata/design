@@ -129,9 +129,16 @@ class SlabBase(ABC):
         float
             Slab self-weight per unit area.
 
+        Note
+        ----
+        The equation used for calculating the self-weight of HS slab is
+        is obtained through regression analysis using the data provided
+        by the manufacturers.
+
         References
         ----------
-        http://www.presdouro.pt/12/pdf/DT_PD2016.pdf
+        https://presdouro.pt/wp-content/themes/presdouro/images/DT_PD2016_VALIDADO.pdf
+        https://lajes.pavimir.pt/pdfs/DA%2060%20-%20Pavimentos%20Aligeirados.pdf
         """
         # Solid cast-in-situ slab
         if self.typology == 1 or self.typology == 2:
@@ -200,9 +207,16 @@ class SlabBase(ABC):
         float
             Slab thickness (depth).
 
+        Note
+        ----
+        The equation used for calculating the thickness of HS slab is
+        is obtained through regression analysis using the data provided
+        by the manufacturers.
+
         References
         ----------
-        http://www.presdouro.pt/12/pdf/DT_PD2016.pdf
+        https://presdouro.pt/wp-content/themes/presdouro/images/DT_PD2016_VALIDADO.pdf
+        https://lajes.pavimir.pt/pdfs/DA%2060%20-%20Pavimentos%20Aligeirados.pdf
         """
         if not self._thickness:
             min_span_length = min(self.lx, self.ly)
